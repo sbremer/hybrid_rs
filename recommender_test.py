@@ -136,6 +136,60 @@ def cf_svd(train_data_matrix, test_data_matrix):
     # print('SVD CF MSE: ' + str(rmse_svd))
     return rmse_svd
 
+
+def cf_mf(train_data_matrix, test_data_matrix):
+    import implicit
+    from scipy.sparse import coo_matrix
+
+    train_data_matrix = train_data_matrix.T
+    indices = np.nonzero(train_data_matrix)
+    train_data_matrix = (train_data_matrix - 3) / 2
+    cm = coo_matrix((train_data_matrix[indices], indices), shape=train_data_matrix.shape)
+
+    rank = 100
+    model = implicit.als.AlternatingLeastSquares(factors=rank, num_threads=8, regularization=0.1, calculate_training_loss=True, iterations=15)
+    # model.user_factors = np.random.rand(n_users, rank).astype(np.float64) * 0.01
+    # model.item_factors = np.random.rand(n_items, rank).astype(np.float64) * 0.01
+    model.fit(cm)
+
+    # user_factors, item_factors = implicit.alternating_least_squares(cm, factors=500)
+    predicted = model.user_factors.dot(model.item_factors.T) * 2 + 3
+
+    rmse_mf = rmse(predicted, test_data_matrix)
+
+    print('MF CF MSE: ' + str(rmse_mf))
+    return rmse_mf
+
+
+def cf_mf2(train_data_matrix, test_data_matrix):
+    lambda_ = 0.1
+    n_factors = 100
+    m, n = train_data_matrix.shape
+    n_iterations = 20
+
+    X = 5 * np.random.rand(m, n_factors)
+    Y = 5 * np.random.rand(n_factors, n)
+
+    def get_error(Q, X, Y, W):
+        return np.sum((W * (Q - np.dot(X, Y))) ** 2)
+
+    W = (train_data_matrix != 0).astype(np.float64, copy=False)
+
+    weighted_errors = []
+    for ii in range(n_iterations):
+        for u, Wu in enumerate(W):
+            X[u] = np.linalg.solve(np.dot(Y, np.dot(np.diag(Wu), Y.T)) + lambda_ * np.eye(n_factors),
+                                   np.dot(Y, np.dot(np.diag(Wu), train_data_matrix[u].T))).T
+        for i, Wi in enumerate(W.T):
+            Y[:, i] = np.linalg.solve(np.dot(X.T, np.dot(np.diag(Wi), X)) + lambda_ * np.eye(n_factors),
+                                      np.dot(X.T, np.dot(np.diag(Wi), train_data_matrix[:, i])))
+        weighted_errors.append(get_error(train_data_matrix, X, Y, W))
+        print('{}th iteration is completed'.format(ii))
+    weighted_Q_hat = np.dot(X, Y)
+    print('Error of rated movies: {}'.format(get_error(train_data_matrix, X, Y, W)))
+
+    pass
+
 # </editor-fold>
 
 
@@ -152,15 +206,17 @@ def main():
     kf = KFold(n_splits=n_fold, shuffle=True)
 
     # Config of what to run (Similarity takes long)
-    run_bias = True
+    run_bias = False
     run_sim = False
-    run_svd = True
+    run_svd = False
+    run_mf = True
 
     rmses_bias_g = []
     rmses_bias_gui = []
     rmses_sim_user = []
     rmses_sim_item = []
     rmses_svd = []
+    rmses_mf = []
 
     for train_indices, test_indices in kf.split(df):
         train = df.iloc[train_indices, :]
@@ -194,6 +250,12 @@ def main():
 
             rmses_svd.append(rmse_svd)
 
+        # MF CF
+        if run_mf:
+            rmse_mf = cf_mf2(train_data_matrix, test_data_matrix)
+
+            rmses_mf.append(rmse_mf)
+
 
     # Bias CF
     if run_bias:
@@ -208,6 +270,10 @@ def main():
     # SVD CF
     if run_svd:
         print('Crossval RMSE of SVD-based CF: {}'.format(np.mean(rmses_svd)))
+
+    # MF CF
+    if run_mf:
+        print('Crossval RMSE of MF-based CF: {}'.format(np.mean(rmses_mf)))
 
 if __name__ == '__main__':
     main()
