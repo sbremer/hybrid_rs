@@ -138,22 +138,35 @@ def cf_svd(train_data_matrix, test_data_matrix):
 
 
 def cf_mf(train_data_matrix, test_data_matrix):
+    import numpy.ma as ma
+    train_data_matrix_ma = ma.masked_values(train_data_matrix, 0)
+
+    ratings_total = train_data_matrix_ma.mean()
+    ratings_user = np.array(train_data_matrix_ma.mean(axis=1) - ratings_total)
+    ratings_item = np.array(train_data_matrix_ma.mean(axis=0) - ratings_total)
+
+    predicted_g = np.tile(ratings_total, (n_users, n_items))
+    predicted_gui = ratings_total + np.tile(ratings_user, (n_items, 1)).T + np.tile(ratings_item, (n_users, 1))
+
     import implicit
     from scipy.sparse import coo_matrix
 
     train_data_matrix = train_data_matrix.T
     indices = np.nonzero(train_data_matrix)
-    train_data_matrix = (train_data_matrix - 3) / 2
+    train_data_matrix = (train_data_matrix)
     cm = coo_matrix((train_data_matrix[indices], indices), shape=train_data_matrix.shape)
 
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+
     rank = 100
-    model = implicit.als.AlternatingLeastSquares(factors=rank, num_threads=8, regularization=0.1, calculate_training_loss=True, iterations=15)
+    model = implicit.als.AlternatingLeastSquares(factors=rank, num_threads=8, regularization=0.01, calculate_training_loss=True, iterations=10, use_native=False)
     # model.user_factors = np.random.rand(n_users, rank).astype(np.float64) * 0.01
     # model.item_factors = np.random.rand(n_items, rank).astype(np.float64) * 0.01
     model.fit(cm)
 
     # user_factors, item_factors = implicit.alternating_least_squares(cm, factors=500)
-    predicted = model.user_factors.dot(model.item_factors.T) * 2 + 3
+    predicted = model.user_factors.dot(model.item_factors.T)
 
     rmse_mf = rmse(predicted, test_data_matrix)
 
@@ -163,7 +176,7 @@ def cf_mf(train_data_matrix, test_data_matrix):
 
 def cf_mf2(train_data_matrix, test_data_matrix):
     lambda_ = 0.1
-    n_factors = 100
+    n_factors = 10
     m, n = train_data_matrix.shape
     n_iterations = 20
 
@@ -188,6 +201,133 @@ def cf_mf2(train_data_matrix, test_data_matrix):
     weighted_Q_hat = np.dot(X, Y)
     print('Error of rated movies: {}'.format(get_error(train_data_matrix, X, Y, W)))
 
+    pass
+
+
+def cf_mf3(train_data_matrix, test_data_matrix):
+    R = train_data_matrix
+    T = test_data_matrix
+    # Index matrix for training data
+    I = R.copy()
+    I[I > 0] = 1
+    I[I == 0] = 0
+
+    # Index matrix for test data
+    I2 = T.copy()
+    I2[I2 > 0] = 1
+    I2[I2 == 0] = 0
+
+    # Calculate the RMSE
+    def rmse(I, R, Q, P):
+        return np.sqrt(np.sum((I * (R - np.dot(P.T, Q))) ** 2) / len(R[R > 0]))
+
+    lmbda = 0.1  # Regularisation weight
+    k = 20  # Dimensionality of latent feature space
+    m, n = R.shape  # Number of users and items
+    n_epochs = 15  # Number of epochs
+
+    P = 3 * np.random.rand(k, m)  # Latent user feature matrix
+    Q = 3 * np.random.rand(k, n)  # Latent movie feature matrix
+    Q[0, :] = R[R != 0].mean(axis=0)  # Avg. rating for each movie
+    E = np.eye(k)  # (k x k)-dimensional idendity matrix
+
+    train_errors = []
+    test_errors = []
+
+    # Repeat until convergence
+    for epoch in range(n_epochs):
+        # Fix Q and estimate P
+        for i, Ii in enumerate(I):
+            nui = np.count_nonzero(Ii)  # Number of items user i has rated
+            if (nui == 0): nui = 1  # Be aware of zero counts!
+
+            # Least squares solution
+            Ai = np.dot(Q, np.dot(np.diag(Ii), Q.T)) + lmbda * nui * E
+            Vi = np.dot(Q, np.dot(np.diag(Ii), R[i].T))
+            P[:, i] = np.linalg.solve(Ai, Vi)
+
+        # Fix P and estimate Q
+        for j, Ij in enumerate(I.T):
+            nmj = np.count_nonzero(Ij)  # Number of users that rated item j
+            if (nmj == 0): nmj = 1  # Be aware of zero counts!
+
+            # Least squares solution
+            Aj = np.dot(P, np.dot(np.diag(Ij), P.T)) + lmbda * nmj * E
+            Vj = np.dot(P, np.dot(np.diag(Ij), R[:, j]))
+            Q[:, j] = np.linalg.solve(Aj, Vj)
+
+        train_rmse = rmse(I, R, Q, P)
+        test_rmse = rmse(I2, T, Q, P)
+        train_errors.append(train_rmse)
+        test_errors.append(test_rmse)
+
+        print("[Epoch %d/%d] train error: %f, test error: %f" \
+        % (epoch + 1, n_epochs, train_rmse, test_rmse))
+
+    print("Algorithm converged")
+    return test_rmse
+
+
+def cf_mf4(train_data_matrix, test_data_matrix):
+    def alternating_least_squares(Cui, factors, regularization, iterations=20):
+        users, items = Cui.shape
+
+        X = np.random.rand(users, factors) * 0.01
+        Y = np.random.rand(items, factors) * 0.01
+
+        Ciu = Cui.T.tocsr()
+        Cui = Cui.tocsr()
+        for iteration in range(iterations):
+            least_squares(Cui, X, Y, regularization)
+            least_squares(Ciu, Y, X, regularization)
+
+        return X, Y
+
+    def nonzeros(m, row):
+        """ returns the non zeroes of a row in csr_matrix """
+        for index in range(m.indptr[row], m.indptr[row + 1]):
+            yield m.indices[index], m.data[index]
+
+    def least_squares(Cui, X, Y, regularization):
+        users, factors = X.shape
+        YtY = Y.T.dot(Y)
+
+        for u in range(users):
+            # accumulate YtCuY + regularization * I in A
+            A = YtY + regularization * np.eye(factors)
+
+            # accumulate YtCuPu in b
+            b = np.zeros(factors)
+
+            for i, confidence in nonzeros(Cui, u):
+                factor = Y[i]
+                A += (confidence - 1) * np.outer(factor, factor)
+                b += confidence * factor
+
+            # Xu = (YtCuY + regularization * I)^-1 (YtCuPu)
+            X[u] = np.linalg.solve(A, b)
+
+    import implicit
+    from scipy.sparse import coo_matrix
+
+    indices = np.nonzero(train_data_matrix)
+    cm = coo_matrix((train_data_matrix[indices], indices), shape=train_data_matrix.shape)
+
+    X, Y = alternating_least_squares(cm, 100, 0.1, 5)
+
+    predicted = X.dot(Y.T)
+
+    rmse_mf = rmse(predicted, test_data_matrix)
+    print(rmse_mf)
+
+    return rmse_mf
+
+
+def cf_mf5(train_data_matrix, test_data_matrix):
+    from ExplicitMF import ExplicitMF
+
+    model = ExplicitMF(train_data_matrix, verbose=True)
+    model.train()
     pass
 
 # </editor-fold>
@@ -222,6 +362,22 @@ def main():
         train = df.iloc[train_indices, :]
         test = df.iloc[test_indices, :]
 
+        # from pyspark.mllib.recommendation import ALS
+        # from pyspark.sql import SQLContext
+        # from pyspark import SparkConf, SparkContext
+        #
+        # import os
+        # os.environ["SPARK_HOME"] = "/opt/apache-spark/"
+        #
+        # conf = SparkConf() \
+        #     .setAppName("MovieLensALS") \
+        #     .set("spark.executor.memory", "2g")
+        # sc = SparkContext(conf=conf)
+        #
+        # sqlCtx = SQLContext(sc)
+        # spark_df = sqlCtx.createDataFrame(train.iloc[:,[0,1,2]])
+        # model = ALS.train(spark_df.rdd, 100, 20, 0.01)
+
         train_data_matrix = np.zeros((n_users, n_items))
         for line in train.itertuples():
             train_data_matrix[line[1] - 1, line[2] - 1] = line[3]
@@ -252,7 +408,7 @@ def main():
 
         # MF CF
         if run_mf:
-            rmse_mf = cf_mf2(train_data_matrix, test_data_matrix)
+            rmse_mf = cf_mf5(train_data_matrix, test_data_matrix)
 
             rmses_mf.append(rmse_mf)
 

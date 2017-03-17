@@ -98,3 +98,6 @@ ENV/
 
 # Data folder
 data/
+
+# Spark folder
+spark-warehouse/
