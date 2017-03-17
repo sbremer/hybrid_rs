@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pickle
+import math
 
 
 def main():
@@ -32,11 +33,17 @@ def main():
     contentX = np.zeros((n_ratings, (n_features_user + n_features_item)))
     contentY = np.zeros(n_ratings)
 
+    n_invalid = 0
+
     for rating in ratings.itertuples():
         id = rating.Index
         userid = rating[1]
         itemid = rating[2]
         rating_score = rating[3]
+
+        if math.isnan(users.iloc[userid - 1, 5]):
+            n_invalid += 1
+            continue
 
         contentX[id, 0] = users.iloc[userid - 1, 1]  # Age
         contentX[id, 1] = -1 if users.iloc[userid - 1, 2] == 'M' else 1  # Sex
@@ -45,6 +52,11 @@ def main():
         contentX[id, 25:] = items.iloc[itemid - 1, 5:]
 
         contentY[id] = rating_score
+
+    contentX = contentX[:-n_invalid, :]
+    contentY = contentY[:-n_invalid]
+
+    print('{} invalid samples'.format(n_invalid))
 
     pickle.dump((contentX, contentY), open('data/cont.pickle', 'wb'), pickle.HIGHEST_PROTOCOL)
 
