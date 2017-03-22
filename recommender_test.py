@@ -346,10 +346,10 @@ def main():
     kf = KFold(n_splits=n_fold, shuffle=True)
 
     # Config of what to run (Similarity takes long)
-    run_bias = False
+    run_bias = True
     run_sim = False
     run_svd = False
-    run_mf = True
+    run_mf = False
 
     rmses_bias_g = []
     rmses_bias_gui = []

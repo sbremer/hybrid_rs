@@ -29,9 +29,10 @@ def baseline_model():
 seed = 7
 np.random.seed(seed)
 # evaluate model with standardized dataset
-estimator = KerasRegressor(build_fn=baseline_model, nb_epoch=10, batch_size=100, verbose=0)
+estimator = KerasRegressor(build_fn=baseline_model, nb_epoch=10, batch_size=100, verbose=2)
 
 (X, U, I, Y) = pickle.load(open('data/cont.pickle', 'rb'))
+X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
 n_fold = 2
 kf = KFold(n_splits=n_fold, shuffle=True)
@@ -45,7 +46,7 @@ for train_indices, test_indices in kf.split(Y):
     X_test = X[test_indices, :]
     Y_test = Y[test_indices]
 
-    history = estimator.fit(X_train, Y_train, validation_split=0.33, epochs=150)
+    history = estimator.fit(X_train, Y_train, validation_split=0.33, epochs=50)
 
     # plt.plot(history.history['loss'])
     # plt.plot(history.history['val_loss'])
