@@ -30,13 +30,18 @@ def main():
 
     n_features_item = 19  # Genre Tags
 
-    contentX = np.zeros((n_ratings, (n_features_user + n_features_item)))
-    contentY = np.zeros(n_ratings)
+    X = np.zeros((n_ratings, (n_features_user + n_features_item)))
+    U = np.zeros(n_ratings)
+    I = np.zeros(n_ratings)
+    Y = np.zeros(n_ratings)
+
 
     n_invalid = 0
 
+    id = 0
+
     for rating in ratings.itertuples():
-        id = rating.Index
+        # id = rating.Index
         userid = rating[1]
         itemid = rating[2]
         rating_score = rating[3]
@@ -45,20 +50,27 @@ def main():
             n_invalid += 1
             continue
 
-        contentX[id, 0] = users.iloc[userid - 1, 1]  # Age
-        contentX[id, 1] = -1 if users.iloc[userid - 1, 2] == 'M' else 1  # Sex
-        contentX[id, 2:4] = users.iloc[userid - 1, [5, 6]]  # Location (lon, lat)
-        contentX[id, 4:4+n_occupations] = occupation.iloc[userid - 1, :]
-        contentX[id, 25:] = items.iloc[itemid - 1, 5:]
+        U[id] = userid - 1
+        I[id] = itemid - 1
 
-        contentY[id] = rating_score
+        X[id, 0] = users.iloc[userid - 1, 1]  # Age
+        X[id, 1] = -1 if users.iloc[userid - 1, 2] == 'M' else 1  # Sex
+        X[id, 2:4] = users.iloc[userid - 1, [5, 6]]  # Location (lon, lat)
+        X[id, 4:4+n_occupations] = occupation.iloc[userid - 1, :]
+        X[id, 25:] = items.iloc[itemid - 1, 5:]
 
-    contentX = contentX[:-n_invalid, :]
-    contentY = contentY[:-n_invalid]
+        Y[id] = rating_score
+
+        id += 1
+
+    X = X[:-n_invalid, :]
+    Y = Y[:-n_invalid]
+    U = U[:-n_invalid]
+    I = I[:-n_invalid]
 
     print('{} invalid samples'.format(n_invalid))
 
-    pickle.dump((contentX, contentY), open('data/cont.pickle', 'wb'), pickle.HIGHEST_PROTOCOL)
+    pickle.dump((X, U, I, Y), open('data/cont.pickle', 'wb'), pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':
