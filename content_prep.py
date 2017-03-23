@@ -40,6 +40,8 @@ def main():
 
     id = 0
 
+    # ['Age', 'Sex', 'Loc_Lon', 'Loc_Lat', 'job_is_administrator', 'job_is_artist', 'job_is_doctor', 'job_is_educator', 'job_is_engineer', 'job_is_entertainment', 'job_is_executive', 'job_is_healthcare', 'job_is_homemaker', 'job_is_lawyer', 'job_is_librarian', 'job_is_marketing', 'job_is_none', 'job_is_other', 'job_is_programmer', 'job_is_retired', 'job_is_salesman', 'job_is_scientist', 'job_is_student', 'job_is_technician', 'job_is_writer', 'unknown|0', 'Action|1', 'Adventure|2', 'Animation|3', 'Children\'s|4', 'Comedy|5', 'Crime|6', 'Documentary|7', 'Drama|8', 'Fantasy|9', 'Film-Noir|10', 'Horror|11', 'Musical|12', 'Mystery|13', 'Romance|14', 'Sci-Fi|15', 'Thriller|16', 'War|17', 'Western|18']
+
     for rating in ratings.itertuples():
         # id = rating.Index
         userid = rating[1]

@@ -1,13 +1,9 @@
 import numpy as np
-import pandas
-import keras
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error
 from math import sqrt
 import matplotlib.pyplot as plt
@@ -29,7 +25,7 @@ def baseline_model():
 seed = 7
 np.random.seed(seed)
 # evaluate model with standardized dataset
-estimator = KerasRegressor(build_fn=baseline_model, nb_epoch=10, batch_size=100, verbose=2)
+model = KerasRegressor(build_fn=baseline_model, nb_epoch=10, batch_size=100, verbose=2)
 
 (X, U, I, Y) = pickle.load(open('data/cont.pickle', 'rb'))
 X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
@@ -46,7 +42,7 @@ for train_indices, test_indices in kf.split(Y):
     X_test = X[test_indices, :]
     Y_test = Y[test_indices]
 
-    history = estimator.fit(X_train, Y_train, validation_split=0.33, epochs=50)
+    history = model.fit(X_train, Y_train, validation_split=0.33, epochs=50)
 
     # plt.plot(history.history['loss'])
     # plt.plot(history.history['val_loss'])
@@ -56,7 +52,7 @@ for train_indices, test_indices in kf.split(Y):
     # plt.legend(['train', 'test'], loc='upper left')
     # plt.show()
 
-    Y_pred = estimator.predict(X_test) * 6
+    Y_pred = model.predict(X_test) * 6
 
     rmse = sqrt(mean_squared_error(Y_pred, Y_test))
     print('RMSE: {}'.format(rmse))
@@ -65,5 +61,5 @@ for train_indices, test_indices in kf.split(Y):
 print('Crossval RMSE of Content-based RS: {}'.format(np.mean(rmses)))
 
 # kfold = KFold(n_splits=3, random_state=seed)
-# results = cross_val_score(estimator, X, Y, cv=kfold)
+# results = cross_val_score(model, X, Y, cv=kfold)
 # print("Results: %.2f (%.2f) MSE" % (results.mean(), results.std()))
