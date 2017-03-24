@@ -17,7 +17,14 @@ feature_names = ['Age', 'Sex', 'Loc_Lon', 'Loc_Lat', 'job_is_administrator', 'jo
             'Children\'s|4', 'Comedy|5', 'Crime|6', 'Documentary|7', 'Drama|8', 'Fantasy|9', 'Film-Noir|10',
             'Horror|11', 'Musical|12', 'Mystery|13', 'Romance|14', 'Sci-Fi|15', 'Thriller|16', 'War|17', 'Western|18']
 
-n_features = X.shape[1]
+# Add noise dimension
+noisify = True
+if noisify:
+    noise = np.random.normal(0.0, 0.3, X.shape[0])
+    X = np.insert(X, X.shape[1], noise, axis=1)
+    feature_names += ['Noise']
+
+n_samples, n_features = X.shape
 
 assert len(feature_names) == n_features
 
@@ -51,13 +58,18 @@ weights_in = np.asarray(model.weights[0].container.data)
 bias = np.asarray(model.weights[len(model.weights) - 1].container.data)
 
 print('Bias: {}'.format(bias[0]))
+fweights = []
 for a in range(n_features):
-    name = feature_names[a]
     weight = weights_in[a][0]
-    print('Feature {}:  {}'.format(name, weight))
+    fweights += [(a, weight)]
+
+fweights = sorted(fweights, key=lambda x: -abs(x[1]))
+for fweight in fweights:
+    print('Feature {}:  {}'.format(feature_names[fweight[0]], fweight[1]))
 
 # Feature importance testing by setting all inputs of one dimension to its mean (if normalized: 0)
-print('Leaving out one dimension:')
+print('\n\nLeaving out one dimension:')
+loweights = []
 for a in range(n_features):
     X_ftest = X.copy()
     X_ftest[:, a] = 0.0
@@ -65,9 +77,8 @@ for a in range(n_features):
     Y_pred = model.predict(X_ftest) * 6
 
     rmse_ftest = sqrt(mean_squared_error(Y_pred, Y))
+    loweights += [(a, rmse-rmse_ftest)]
 
-    name = feature_names[a]
-    print('Feature {}:  {}'.format(name, rmse-rmse_ftest))
-
-
-
+loweights = sorted(loweights, key=lambda x: x[1])
+for loweight in loweights:
+    print('Feature {}:  {}'.format(feature_names[loweight[0]], loweight[1]))
