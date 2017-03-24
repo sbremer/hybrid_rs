@@ -32,7 +32,7 @@ assert len(feature_names) == n_features
 normalize = True
 if normalize:
     X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
-    # Y -= np.mean(Y)
+    Y -= np.mean(Y)
 
 # Build model
 input_x = Input((n_features,))
@@ -90,6 +90,3 @@ for a in range(n_features):
 loweights = sorted(loweights, key=lambda x: x[1])
 for loweight in loweights:
     print('Feature {}:  {}'.format(feature_names[loweight[0]], loweight[1]))
-
-
-
