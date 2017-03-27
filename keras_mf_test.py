@@ -3,13 +3,12 @@ from keras.layers import Embedding, Reshape, Input, Dense
 from keras.layers.merge import Dot, Concatenate, Add
 from keras.models import Model
 from keras.callbacks import EarlyStopping
-
 import keras
 import pickle
 from sklearn.metrics import mean_squared_error
 from math import sqrt
-from sklearn.model_selection import KFold
 
+import util
 
 # Hardcoded for now
 n_users = 943
@@ -44,6 +43,7 @@ def get_model():
     model.compile(loss='mse', optimizer='adamax')
     return model
 
+
 (X, U, I, Y) = pickle.load(open('data/cont.pickle', 'rb'))
 
 Y -= np.mean(Y)
@@ -52,11 +52,11 @@ callbacks = [EarlyStopping('val_loss', patience=4)]
 
 
 n_fold = 5
-kf = KFold(n_splits=n_fold, shuffle=True)
 
 rmses = []
 
-for train_indices, test_indices in kf.split(Y):
+# for train_indices, test_indices in kf.split(Y):
+for train_indices, test_indices in util.kfold_entries(n_fold, U):
     U_train = U[train_indices]
     I_train = I[train_indices]
     Y_train = Y[train_indices] / 5

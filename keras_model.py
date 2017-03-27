@@ -10,6 +10,7 @@ from sklearn.metrics import mean_squared_error
 from math import sqrt
 from sklearn.model_selection import KFold
 
+import util
 
 # Hardcoded for now
 n_users = 943
@@ -64,7 +65,8 @@ kf = KFold(n_splits=n_fold, shuffle=True)
 
 rmses = []
 
-for train_indices, test_indices in kf.split(Y):
+# for train_indices, test_indices in kf.split(Y):
+for train_indices, test_indices in util.kfold_entries(n_fold, U):
     X_train = X[train_indices, :]
     U_train = U[train_indices]
     I_train = I[train_indices]

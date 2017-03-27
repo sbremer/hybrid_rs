@@ -19,6 +19,8 @@ user_lookup = dict(zip(users, range(n_users)))
 item_lookup = dict(zip(items, range(n_items)))
 
 sales = np.zeros((n_users, n_items))
+no_sale = 0
+total_sales = 0.0
 
 for row in data.itertuples():
     if row.Umsatz_Katalog > 0.0:
@@ -26,6 +28,9 @@ for row in data.itertuples():
         item_id = item_lookup[row.Katalog]
         sale = row.Umsatz_Katalog
         sales[user_id, item_id] = sale
+        total_sales += sale
+    else:
+        no_sale += 1
 
 entries = len(sales.nonzero()[0])
 sparsity = float(entries)
@@ -33,4 +38,6 @@ sparsity /= (sales.shape[0] * sales.shape[1])
 print('Number of users {}'.format(n_users))
 print('Number of Items {}'.format(n_items))
 print('Total valid entries {}'.format(entries))
-print('Sparsity: {:4.2f}%'.format(sparsity * 100))
+print('Entries with no sales volume {}'.format(no_sale))
+print('Sparsity {:4.4f}%'.format(sparsity * 100))
+print('Total sales volume {:,}'.format(int(total_sales)))

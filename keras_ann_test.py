@@ -21,6 +21,10 @@ def baseline_model():
     model.compile(loss='mean_squared_error', optimizer='adam')
     return model
 
+# Hardcoded for now
+n_users = 943
+n_items = 1682
+
 # fix random seed for reproducibility
 seed = 7
 np.random.seed(seed)
@@ -37,9 +41,13 @@ rmses = []
 
 for train_indices, test_indices in kf.split(Y):
     X_train = X[train_indices, :]
+    U_train = U[train_indices]
+    I_train = I[train_indices]
     Y_train = Y[train_indices] / 6
 
     X_test = X[test_indices, :]
+    U_test = U[test_indices]
+    I_test = I[test_indices]
     Y_test = Y[test_indices]
 
     history = model.fit(X_train, Y_train, validation_split=0.33, epochs=50)
