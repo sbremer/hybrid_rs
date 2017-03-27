@@ -40,4 +40,31 @@ print('Number of Items {}'.format(n_items))
 print('Total valid entries {}'.format(entries))
 print('Entries with no sales volume {}'.format(no_sale))
 print('Sparsity {:4.4f}%'.format(sparsity * 100))
-print('Total sales volume {:,}'.format(int(total_sales)))
+print('Total sales volume {:,}€'.format(int(total_sales)))
+items_per_user_avg = np.mean(np.sum((sales != 0).astype(np.int), 1))
+users_per_item_avg = np.mean(np.sum((sales != 0).astype(np.int), 0))
+print('Average number of items per user {}'.format(items_per_user_avg))
+print('Average number of users per item {}'.format(users_per_item_avg))
+
+users_witout_items = np.sum(np.sum((sales != 0), 1) == 0)
+print('Users without any items {}'.format(users_witout_items))
+
+items_without_users = np.sum(np.sum((sales != 0), 0) == 0)
+print('Items without any users {}'.format(items_without_users))
+
+# Delete users and items without valid sales
+sales_sparse = sales[~np.all(sales == 0, 1), :]
+sales_sparse = sales_sparse[:, ~np.all(sales == 0, 0)]
+
+
+entries_sparse = len(sales_sparse.nonzero()[0])
+sparsity_sparse = float(entries)
+sparsity_sparse /= (sales_sparse.shape[0] * sales_sparse.shape[1])
+print('Removing users and items without sales:')
+print('Number of users {}'.format(sales_sparse.shape[0]))
+print('Number of Items {}'.format(sales_sparse.shape[1]))
+print('Sparsity after removal of users without sales {:4.4f}%'.format(sparsity_sparse * 100))
+items_per_user_avg = np.mean(np.sum((sales_sparse != 0), 1))
+users_per_item_avg = np.mean(np.sum((sales_sparse != 0), 0))
+print('Average number of items per user {}'.format(items_per_user_avg))
+print('Average number of users per item {}'.format(users_per_item_avg))
