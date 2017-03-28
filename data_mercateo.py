@@ -23,7 +23,7 @@ no_sale = 0
 total_sales = 0.0
 
 for row in data.itertuples():
-    if row.Umsatz_Katalog > 0.0:
+    if row.Umsatz_Katalog >= 0.0:
         user_id = user_lookup[row.Kundennr]
         item_id = item_lookup[row.Katalog]
         sale = row.Umsatz_Katalog

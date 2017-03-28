@@ -20,7 +20,7 @@ def main():
 
     n_features_user = 4  # Age, Sex, Location (lon, lat)
     n_occupations = users.occupation.unique().shape[0]
-    n_features_user +=  n_occupations   # HotOne encoded
+    n_features_user += n_occupations   # HotOne encoded
 
     occupation = pd.get_dummies(users.iloc[:, 3])
 
@@ -30,11 +30,22 @@ def main():
 
     n_features_item = 19  # Genre Tags
 
+    meta_users = np.zeros((n_users, n_features_user))
+    meta_items = np.zeros((n_items, n_features_item))
+
+    # Fill user metadate matrix
+    meta_users[:, 0] = users.iloc[:, 1]  # Age
+    meta_users[:, 1] = [-1 if x == 'M' else 1 for x in users.iloc[:, 2]]  # Sex
+    meta_users[:, 2:4] = users.iloc[:, [5, 6]]  # Location (lon, lat)
+    meta_users[:, 4:4+n_occupations] = occupation.iloc[:, :]
+
+    # Fill movie metadata matrix
+    meta_items[:, :] = items.iloc[:, 5:]
+
     X = np.zeros((n_ratings, (n_features_user + n_features_item)))
     U = np.zeros(n_ratings)
     I = np.zeros(n_ratings)
     Y = np.zeros(n_ratings)
-
 
     n_invalid = 0
 
@@ -73,6 +84,8 @@ def main():
     print('{} invalid samples'.format(n_invalid))
 
     pickle.dump((X, U, I, Y), open('data/cont.pickle', 'wb'), pickle.HIGHEST_PROTOCOL)
+
+    pickle.dump((meta_users, meta_items, U, I, Y), open('data/ratings_metadata.pickle', 'wb'), pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':

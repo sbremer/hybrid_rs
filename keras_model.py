@@ -43,9 +43,10 @@ def get_model():
     ann_2 = Dense(50, kernel_initializer='uniform', activation='sigmoid')(ann_1)
     ann_3 = Dense(1, kernel_initializer='uniform', activation='linear')(ann_2)
 
-    all = Add()([mf, bias_u, bias_i, ann_3])
+    # added = Add()([mf, bias_u, bias_i, ann_3])
+    added = Add()([bias_u, bias_i, ann_3])
 
-    model = Model(inputs=[input_u, input_i, input_x], outputs=all)
+    model = Model(inputs=[input_u, input_i, input_x], outputs=mf)
 
     model.compile(loss='mse', optimizer='adamax')
     return model
@@ -59,14 +60,21 @@ Y -= np.mean(Y)
 
 callbacks = [EarlyStopping('val_loss', patience=4)]
 
-
-n_fold = 5
-kf = KFold(n_splits=n_fold, shuffle=True)
+# Init random seed for reproducibility
+seed = 7
+np.random.seed(seed)
 
 rmses = []
 
-# for train_indices, test_indices in kf.split(Y):
-for train_indices, test_indices in util.kfold_entries(n_fold, U):
+# Crossvalidation
+n_fold = 5
+coldstart = False
+if coldstart:
+    kfold = util.kfold_entries(n_fold, U)
+else:
+    kfold = util.kfold(n_fold, U)
+
+for train_indices, test_indices in kfold:
     X_train = X[train_indices, :]
     U_train = U[train_indices]
     I_train = I[train_indices]
@@ -94,6 +102,6 @@ for train_indices, test_indices in util.kfold_entries(n_fold, U):
     print('RMSE: {}'.format(rmse))
     rmses.append(rmse)
 
-print('Crossval RMSE of MF based RS: {}'.format(np.mean(rmses)))
+print('Crossval RMSE of MF based RS: {0:.4f}'.format(np.mean(rmses)))
 
 
