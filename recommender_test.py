@@ -128,9 +128,13 @@ def cf_similarity(train_data_matrix, test_data_matrix):
 def cf_svd(train_data_matrix, test_data_matrix):
     from scipy.sparse.linalg import svds
 
+    mean = np.mean(train_data_matrix[train_data_matrix != 0.0])
+    train_data_matrix[train_data_matrix != 0.0] -= mean
+    test_data_matrix[test_data_matrix != 0.0] -= mean
+
     u, s, vt = svds(train_data_matrix, k=40)
     s_diag_matrix = np.diag(s)
-    X_pred = np.dot(np.dot(u, s_diag_matrix), vt)
+    X_pred = u @ s_diag_matrix @ vt
     rmse_svd = rmse(X_pred, test_data_matrix)
 
     # print('SVD CF MSE: ' + str(rmse_svd))
@@ -307,6 +311,10 @@ def cf_mf4(train_data_matrix, test_data_matrix):
             # Xu = (YtCuY + regularization * I)^-1 (YtCuPu)
             X[u] = np.linalg.solve(A, b)
 
+    mean = np.mean(train_data_matrix[train_data_matrix != 0.0])
+    train_data_matrix[train_data_matrix != 0.0] -= mean
+    test_data_matrix[test_data_matrix != 0.0] -= mean
+
     import implicit
     from scipy.sparse import coo_matrix
 
@@ -330,6 +338,23 @@ def cf_mf5(train_data_matrix, test_data_matrix):
     model.train()
     pass
 
+
+def softimpute(train_data_matrix, test_data_matrix):
+    train_data_matrix[train_data_matrix == 0.0] = float('Nan')
+
+    mean = np.nanmean(train_data_matrix)
+    train_data_matrix[train_data_matrix != 0.0] -= mean
+    test_data_matrix[test_data_matrix != 0.0] -= mean
+
+    from fancyimpute import SoftImpute
+
+    predicted = SoftImpute(n_power_iterations=5, max_iters=20, max_rank=400).complete(train_data_matrix)
+
+    rmse_si = rmse(predicted, test_data_matrix)
+    print(rmse_si)
+
+    return rmse_si
+
 # </editor-fold>
 
 
@@ -349,7 +374,8 @@ def main():
     run_bias = True
     run_sim = False
     run_svd = False
-    run_mf = False
+    run_mf = True
+    run_si = False
 
     rmses_bias_g = []
     rmses_bias_gui = []
@@ -357,6 +383,7 @@ def main():
     rmses_sim_item = []
     rmses_svd = []
     rmses_mf = []
+    rmses_si = []
 
     for train_indices, test_indices in kf.split(df):
         train = df.iloc[train_indices, :]
@@ -408,10 +435,14 @@ def main():
 
         # MF CF
         if run_mf:
-            rmse_mf = cf_mf5(train_data_matrix, test_data_matrix)
+            rmse_mf = cf_mf3(train_data_matrix, test_data_matrix)
 
             rmses_mf.append(rmse_mf)
 
+        if run_si:
+            rmse_si = softimpute(train_data_matrix, test_data_matrix)
+
+            rmses_si.append(rmse_si)
 
     # Bias CF
     if run_bias:
@@ -430,6 +461,9 @@ def main():
     # MF CF
     if run_mf:
         print('Crossval RMSE of MF-based CF: {}'.format(np.mean(rmses_mf)))
+
+    if run_si:
+        print('Crossval RMSE of SoftImpute CF: {}'.format(np.mean(rmses_si)))
 
 if __name__ == '__main__':
     main()
