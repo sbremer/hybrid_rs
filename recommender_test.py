@@ -347,7 +347,6 @@ def softimpute(train_data_matrix, test_data_matrix):
     test_data_matrix[test_data_matrix != 0.0] -= mean
 
     from fancyimpute import SoftImpute
-
     predicted = SoftImpute(n_power_iterations=5, max_iters=20, max_rank=400).complete(train_data_matrix)
 
     rmse_si = rmse(predicted, test_data_matrix)
@@ -374,8 +373,8 @@ def main():
     run_bias = True
     run_sim = False
     run_svd = False
-    run_mf = True
-    run_si = False
+    run_mf = False
+    run_si = True
 
     rmses_bias_g = []
     rmses_bias_gui = []
