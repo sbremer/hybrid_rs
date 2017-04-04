@@ -10,6 +10,9 @@ from math import sqrt
 # Local imports
 import util
 
+# Hardcoded config
+verbose = 0
+
 
 class HybridModel:
 
@@ -99,7 +102,7 @@ class HybridModel:
 
         # Update-train MF model with cross-train data
         history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=500, epochs=100,
-                                    validation_split=0.1, verbose=2, callbacks=self.callbacks_mf)
+                                    validation_split=0.1, verbose=verbose, callbacks=self.callbacks_mf)
 
     def step_ann(self, n_xsize, shuffle=True):
         # Get cross-train data from MF
@@ -107,7 +110,7 @@ class HybridModel:
 
         # Update-train ANN model with cross-train data
         history = self.model_ann.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=500, epochs=100,
-                                     validation_split=0.1, verbose=2, callbacks=self.callbacks_ann)
+                                     validation_split=0.1, verbose=verbose, callbacks=self.callbacks_ann)
 
     def test_mf(self, inds_u, inds_i, y, prnt=False):
         y_pred = self.model_mf.predict([inds_u, inds_i]) / 0.2 + 0.5
@@ -158,11 +161,15 @@ class HybridModel:
         self.n_train = len(y_train)
         self.index_gen = util.IndexGen(self.n_users, self.n_items, inds_u_train, inds_i_train)
 
+        # Initial early stopping callbacks
+        callbacks_mf = [EarlyStopping('val_loss', patience=10)]
+        callbacks_ann = [EarlyStopping('val_loss', patience=30)]
+
         # Run initial training
         history = self.model_mf.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
-                                    validation_split=0.1, verbose=2, callbacks=self.callbacks_mf)
+                                    validation_split=0.2, verbose=verbose, callbacks=callbacks_mf)
         history = self.model_ann.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
-                                     validation_split=0.1, verbose=2, callbacks=self.callbacks_ann)
+                                     validation_split=0.2, verbose=verbose, callbacks=callbacks_ann)
 
         # Print results
         if prnt:
