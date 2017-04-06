@@ -3,6 +3,7 @@ import keras
 from keras.layers import Embedding, Reshape, Input, Dense
 from keras.layers.merge import Dot, Concatenate, Add
 from keras.models import Model
+from keras.callbacks import EarlyStopping
 from util import EarlyStoppingBestVal
 from sklearn.metrics import mean_squared_error
 from math import sqrt
@@ -21,7 +22,7 @@ bias_ann = False
 class HybridModel:
 
     def _get_model_mf(self, n_factors=20, include_bias=False):
-        lmdba = 0.00002
+        lmdba = 0.00001
         regularizer = keras.regularizers.l2(lmdba)
 
         input_u = Input((1,))
@@ -51,7 +52,7 @@ class HybridModel:
         return model
 
     def _get_model_ann(self, meta_users, meta_items, include_bias=False):
-        lmdba = 0.00002
+        lmdba = 0.00001
         regularizer = keras.regularizers.l2(lmdba)
 
         input_u = Input((1,))
@@ -84,7 +85,7 @@ class HybridModel:
         else:
             model = Model(inputs=[input_u, input_i], outputs=ann_3)
 
-        model.compile(loss='mse', optimizer='nadam')
+        model.compile(loss='mse', optimizer='adamax')
 
         model.layers[2].set_weights([meta_users])
         model.layers[3].set_weights([meta_items])
@@ -165,7 +166,7 @@ class HybridModel:
         self.n_items = meta_items.shape[0]
 
         # Build models
-        self.model_mf = self._get_model_mf(n_factors=40, include_bias=bias_mf)
+        self.model_mf = self._get_model_mf(n_factors=20, include_bias=bias_mf)
         self.model_ann = self._get_model_ann(meta_users, meta_items, include_bias=bias_ann)
 
         # Create early stopping callbacks. ANN validation varies more -> higher patience
@@ -191,6 +192,9 @@ class HybridModel:
         # Initial early stopping callbacks
         callbacks_mf = [EarlyStoppingBestVal('val_loss', patience=4)]
         callbacks_ann = [EarlyStoppingBestVal('val_loss', patience=8)]
+
+        # callbacks_mf = [EarlyStopping('val_loss', patience=4)]
+        # callbacks_ann = [EarlyStopping('val_loss', patience=8)]
 
         # Run initial training
         history = self.model_mf.fit([inds_u_train, inds_i_train], y_train - self.mean, batch_size=batch_size, epochs=200,

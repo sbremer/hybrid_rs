@@ -40,12 +40,12 @@ def get_model():
     input_x = Input((44,))
     ann_1 = Dense(200, input_dim=44, kernel_initializer='uniform', activation='sigmoid')(input_x)
     ann_2 = Dense(50, kernel_initializer='uniform', activation='sigmoid')(ann_1)
-    ann_3 = Dense(1, kernel_initializer='uniform', activation='linear')(ann_2)
+    ann_3 = Dense(1, kernel_initializer='uniform', activation='sigmoid')(ann_2)
 
     # added = Add()([mf, bias_u, bias_i, ann_3])
     added = Add()([bias_u, bias_i, ann_3])
 
-    model = Model(inputs=[input_u, input_i, input_x], outputs=mf)
+    model = Model(inputs=[input_u, input_i, input_x], outputs=bias_i)
 
     model.compile(loss='mse', optimizer='adamax')
     return model
@@ -55,19 +55,20 @@ def get_model():
 # Normalize X
 X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
-Y -= np.mean(Y)
+# Y -= np.mean(Y)
+Y = (Y - 0.5) * 0.2
 
 callbacks = [EarlyStopping('val_loss', patience=4)]
 
 # Init random seed for reproducibility
-seed = 7
-np.random.seed(seed)
+# seed = 7
+# np.random.seed(seed)
 
 rmses = []
 
 # Crossvalidation
 n_fold = 5
-coldstart = False
+coldstart = True
 if coldstart:
     kfold = util.kfold_entries(n_fold, U)
 else:
@@ -77,7 +78,7 @@ for train_indices, test_indices in kfold:
     X_train = X[train_indices, :]
     U_train = U[train_indices]
     I_train = I[train_indices]
-    Y_train = Y[train_indices] / 5
+    Y_train = Y[train_indices]
 
     X_test = X[test_indices, :]
     U_test = U[test_indices]
@@ -95,9 +96,9 @@ for train_indices, test_indices in kfold:
     # plt.legend(['train', 'test'], loc='upper left')
     # plt.show()
 
-    Y_pred = model.predict([U_test, I_test, X_test]) * 5
+    Y_pred = model.predict([U_test, I_test, X_test]) / 0.2 + 0.5
 
-    rmse = sqrt(mean_squared_error(Y_pred, Y_test))
+    rmse = sqrt(mean_squared_error(Y_pred, Y_test / 0.2 + 0.5))
     print('RMSE: {}'.format(rmse))
     rmses.append(rmse)
 

@@ -2,8 +2,13 @@ import pickle
 import numpy as np
 
 # Local imports
+import hybrid_model
 from hybrid_model import HybridModel
 import util
+
+hybrid_model.verbose = 0
+hybrid_model.bias_mf = True
+hybrid_model.bias_ann = True
 
 
 # (meta_users, meta_items, U, I, Y) = pickle.load(open('data/ratings_metadata.pickle', 'wb'))
@@ -22,12 +27,14 @@ y = (y - 0.5) * 0.2
 
 # Crossvalidation
 n_fold = 5
-user_coldstart = False
+user_coldstart = True
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)
 else:
     kfold = util.kfold(n_fold, inds_u)
 
+rmses_mf_start = []
+rmses_ann_start = []
 rmses_mf = []
 rmses_ann = []
 
@@ -46,17 +53,35 @@ for xval_train, xval_test in kfold:
     inds_i_test = inds_i[xval_test]
     y_test = y[xval_test]
 
+    # Initial training config
+    hybrid_model.batch_size = 500
+    hybrid_model.val_split = 0.1
+
     # Run initial (separate) training
     model.train_initial(inds_u_train, inds_i_train, y_train, True)
+    print('Testing using test set before cross-training:')
+    rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
+
+    rmses_mf_start.append(rmse_mf)
+    rmses_ann_start.append(rmse_ann)
 
     # Cross-train with half as many matrix entries than actual training set samples
-    n_xtrain = int(n_train / 2)
+    if user_coldstart:
+        n_xtrain = int(n_train * 1)
+    else:
+        n_xtrain = int(n_train * 0.5)
 
-    rmse_mf, rmse_ann = float('nan'), float('nan')
+    # Cross training config
+    hybrid_model.batch_size = 1024
+    hybrid_model.val_split = 0.25
+
+    if user_coldstart:
+        model.step_mf(int(n_xtrain * 4), True)
 
     # Alternating cross-training
     for i in range(5):
         print('Training step {}'.format(i + 1))
+
         # MF step
         model.step_mf(n_xtrain)
 
@@ -70,6 +95,7 @@ for xval_train, xval_test in kfold:
     rmses_mf.append(rmse_mf)
     rmses_ann.append(rmse_ann)
 
-
+print('Crossval RMSE of MF (before xtrain): {0:.4f}'.format(np.mean(rmses_mf_start)))
+print('Crossval RMSE of ANN (before xtrain): {0:.4f}'.format(np.mean(rmses_ann_start)))
 print('Crossval RMSE of MF: {0:.4f}'.format(np.mean(rmses_mf)))
 print('Crossval RMSE of ANN: {0:.4f}'.format(np.mean(rmses_ann)))

@@ -7,17 +7,16 @@ from hybrid_model import HybridModel
 import util
 
 hybrid_model.verbose = 2
-hybrid_model.batch_size = 1024
-hybrid_model.val_split = 0.25
+hybrid_model.batch_size = 500
+hybrid_model.val_split = 0.1
 hybrid_model.bias_mf = True
 hybrid_model.bias_ann = True
-
 
 # (meta_users, meta_items, U, I, Y) = pickle.load(open('data/ratings_metadata.pickle', 'wb'))
 (meta_users, meta_items) = pickle.load(open('data/imdb_metadata.pickle', 'rb'))
 (_, inds_u, inds_i, y) = pickle.load(open('data/cont.pickle', 'rb'))
 
-# meta_items = meta_items[:, 19:21]
+# meta_items = meta_items[:, 0:19]
 
 # Normalize features and set Nans to zero (=mean)
 meta_users = (meta_users - np.nanmean(meta_users, axis=0)) / np.nanstd(meta_users, axis=0)
@@ -30,7 +29,7 @@ y_org = y.copy()
 y = (y - 0.5) * 0.2
 
 # Crossvalidation
-n_fold = 4
+n_fold = 5
 user_coldstart = True
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)
@@ -59,10 +58,27 @@ print('Testing using test set before cross-training:')
 rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
 
 # Cross-train with half as many matrix entries than actual training set samples
-n_xtrain = int(n_train * 1.0)
+n_xtrain = int(n_train * 1)
+
+rmses_mf = [rmse_mf]
+rmses_ann = [rmse_ann]
+
+hybrid_model.batch_size = 1024
+hybrid_model.val_split = 0.25
+
+if user_coldstart:
+    print('User coldstart: Initial MF Training step')
+    model.step_mf(int(n_xtrain * 6), True)
+
+    rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
+
+    rmses_mf.append(rmse_mf)
+    rmses_ann.append(rmse_ann)
 
 # Alternating cross-training
-for i in range(20):
+for i in range(15):
+    print('Training step {}'.format(i + 1))
+
     # ANN step
     model.step_ann(int(n_xtrain), True)
     # MF step
@@ -71,3 +87,34 @@ for i in range(20):
     # Test
     print('Results after training step {}:'.format(i + 1))
     rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
+
+    rmses_mf.append(rmse_mf)
+    rmses_ann.append(rmse_ann)
+
+import matplotlib.pyplot as plt
+
+x = np.arange(len(rmses_mf))
+plt.plot(x, rmses_mf, 'r-', x, rmses_ann, 'b-')
+plt.legend(['RMSE MF', 'RMSE ANN'])
+plt.show()
+
+for factor in np.arange(0.25, 1.26, 0.25):
+    print('Factor for cross training: {}'.format(factor))
+
+    # Cross-train with half as many matrix entries than actual training set samples
+    n_xtrain = int(n_train * factor)
+
+    # Alternating cross-training
+    for i in range(3):
+        print('Training step {}'.format(i + 1))
+        # MF step
+        model.step_mf(int(n_xtrain), True)
+        # ANN step
+        model.step_ann(int(n_xtrain), True)
+
+        # Test
+        print('Results after training step {}:'.format(i + 1))
+        rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
+
+        rmses_mf.append(rmse_mf)
+        rmses_ann.append(rmse_ann)
