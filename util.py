@@ -132,3 +132,42 @@ class EarlyStoppingBestVal(Callback):
 
         if self.stopped_epoch > 0 and self.verbose > 0:
             print('Epoch %05d: early stopping. Using weights from epoch %d according to lowest validation error' % (self.stopped_epoch, self.best_model_epoch))
+
+from keras.layers import Layer
+import keras.backend as K
+import itertools
+import math
+
+
+class InputCombinations(Layer):
+    def __init__(self, k, **kwargs):
+        super(InputCombinations, self).__init__(**kwargs)
+        self.k = k
+
+    def build(self, input_shape):
+        assert len(input_shape) == 2
+        self.built = True
+
+    def call(self, inputs):
+        n = inputs._keras_shape[1]
+        order = itertools.combinations(range(n), self.k)
+
+        xs = [inputs[list(o)] for o in order]
+        output = K.stack(xs, axis=1)
+
+        return output
+
+    def compute_output_shape(self, input_shape):
+        assert input_shape and len(input_shape) == 2
+        n = input_shape[1]
+        k = self.k
+        n_combinations = math.factorial(n) // (math.factorial(k) * math.factorial(n-k))
+
+        return (None, n_combinations, k)
+
+    def get_config(self):
+        config = {
+            'k': self.k,
+        }
+        base_config = super(InputCombinations, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))

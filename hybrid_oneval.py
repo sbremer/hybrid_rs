@@ -30,7 +30,7 @@ y = (y - 0.5) * 0.2
 
 # Crossvalidation
 n_fold = 5
-user_coldstart = True
+user_coldstart = False
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)
 else:
@@ -58,7 +58,7 @@ print('Testing using test set before cross-training:')
 rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
 
 # Cross-train with half as many matrix entries than actual training set samples
-n_xtrain = int(n_train * 1)
+n_xtrain = int(n_train * 0.5)
 
 rmses_mf = [rmse_mf]
 rmses_ann = [rmse_ann]
@@ -68,7 +68,7 @@ hybrid_model.val_split = 0.25
 
 if user_coldstart:
     print('User coldstart: Initial MF Training step')
-    model.step_mf(int(n_xtrain * 6), True)
+    model.step_mf(int(n_xtrain * 6), False)
 
     rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
 
@@ -76,7 +76,7 @@ if user_coldstart:
     rmses_ann.append(rmse_ann)
 
 # Alternating cross-training
-for i in range(15):
+for i in range(25):
     print('Training step {}'.format(i + 1))
 
     # ANN step
