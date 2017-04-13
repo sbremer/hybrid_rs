@@ -38,6 +38,9 @@ rmses_ann_start = []
 rmses_mf = []
 rmses_ann = []
 
+f_tsize = 1.0
+f_xsize = 1.0
+
 for xval_train, xval_test in kfold:
     # Create model
     model = HybridModel(meta_users, meta_items)
@@ -75,18 +78,18 @@ for xval_train, xval_test in kfold:
     hybrid_model.batch_size = 1024
     hybrid_model.val_split = 0.25
 
-    if user_coldstart:
-        model.step_mf(int(n_xtrain * 4), True)
+    # if user_coldstart:
+    #     model.step_mf(int(n_xtrain * 4), True)
 
     # Alternating cross-training
-    for i in range(5):
+    for i in range(10):
         print('Training step {}'.format(i + 1))
 
-        # MF step
-        model.step_mf(n_xtrain)
-
         # ANN step
-        model.step_ann(n_xtrain)
+        history_ann = model.step_ann(f_xsize, f_tsize, True)
+
+        # MF step
+        history_mf = model.step_mf(f_xsize, f_tsize, True)
 
         # Test
         print('Results after training step {}:'.format(i + 1))

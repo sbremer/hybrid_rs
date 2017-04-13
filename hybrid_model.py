@@ -94,14 +94,14 @@ class HybridModel:
 
         return model
 
-    def _prepare_step_data(self, n_xsize, from_mf, shuffle, f_tsize):
+    def _prepare_step_data(self, f_xsize, f_tsize, from_mf, shuffle):
         assert self.y_train is not None
 
         # Get n_xsize random indices not in the training set
         if from_mf:
-            inds_u_x, inds_i_x = self.index_gen.get_indices_from_mf(n_xsize)
+            inds_u_x, inds_i_x = self.index_gen.get_indices_from_mf(int(self.n_train * f_xsize))
         else:
-            inds_u_x, inds_i_x = self.index_gen.get_indices_from_ann(n_xsize)
+            inds_u_x, inds_i_x = self.index_gen.get_indices_from_ann(int(self.n_train * f_xsize))
 
         # Get data for generated indices from other model
         if from_mf:
@@ -130,9 +130,9 @@ class HybridModel:
 
         return inds_u_xtrain, inds_i_xtrain, y_xtrain
 
-    def step_mf(self, n_xsize, shuffle=True, f_tsize=1.0):
+    def step_mf(self, f_xsize, f_tsize=1.0, shuffle=True):
         # Get cross-train data from ANN
-        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._prepare_step_data(n_xsize, False, shuffle, f_tsize)
+        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._prepare_step_data(f_xsize, f_tsize, False, shuffle)
 
         # Update-train MF model with cross-train data
         history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain - self.mean, batch_size=batch_size, epochs=100,
@@ -142,9 +142,9 @@ class HybridModel:
 
         return history
 
-    def step_ann(self, n_xsize, shuffle=True, f_tsize=1.0):
+    def step_ann(self, f_xsize, f_tsize=1.0, shuffle=True):
         # Get cross-train data from MF
-        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._prepare_step_data(n_xsize, True, shuffle, f_tsize)
+        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._prepare_step_data(f_xsize, f_tsize, True, shuffle)
 
         # Update-train ANN model with cross-train data
         history = self.model_ann.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=batch_size, epochs=100,
