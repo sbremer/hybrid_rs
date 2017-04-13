@@ -19,37 +19,117 @@ def kfold_entries(k, entries):
         yield train_indices, test_indices
 
 
+def kfold_entries_plus(k, entries, plus):
+    unique = np.unique(entries)
+    kf = KFold(n_splits=k, shuffle=True)
+    for train_indices_entries, test_indices_entries in kf.split(unique):
+
+        train = {key: [] for key in train_indices_entries}
+        test = {key: [] for key in test_indices_entries}
+        for i, x in enumerate(entries):
+            if x in train_indices_entries:
+                train[x].append(i)
+            if x in test_indices_entries:
+                test[x].append(i)
+
+        plus_list = []
+
+        for test_key in test.keys():
+            for _ in range(plus):
+                n = len(test[test_key])
+                if n == 0:
+                    break
+                i = np.random.randint(n - 1)
+                element = test[test_key].pop(i)
+                plus_list.append(element)
+
+        train_indices = list(itertools.chain(plus_list, *train.values()))
+        test_indices = list(itertools.chain(*test.values()))
+
+        yield train_indices, test_indices
+
+
 class IndexGen:
     """
     Generates indices for user-item pairs which are not in the training set.
     Build for sparse training set! Might be very inefficient else.
     """
 
-    def __init__(self, n_users, n_items, U, I):
-        assert len(U) == len(I)
+    def __init__(self, n_users, n_items, inds_u, inds_i):
+        assert len(inds_u) == len(inds_i)
 
         self.n_users = n_users
         self.n_items = n_items
 
+        # Create probability distributions for getting data from MF and ANN
+        counts = np.bincount(inds_u.astype(np.int32), minlength=n_users)
+
+        counts = np.maximum(counts, 5)
+
+        self.prob_from_mf = counts / sum(counts)
+        self.prob_from_ann = (1 / counts) / sum(1 / counts)
+
         # Create and fill entry lookup table
         self.lookup = {}
-        for u_i in zip(U, I):
+        for u_i in zip(inds_u, inds_i):
             self.lookup[u_i] = True
 
     def get_indices(self, n_indices):
-        U = np.zeros((n_indices,))
-        I = np.zeros((n_indices,))
+        inds_u = np.zeros((n_indices,))
+        inds_i = np.zeros((n_indices,))
+
+        lookup_samples = {}
 
         got = 0
         while got < n_indices:
             u = np.random.randint(self.n_users)
             i = np.random.randint(self.n_items)
-            if (u, i) not in self.lookup:
-                U[got] = u
-                I[got] = i
+
+            if (u, i) not in self.lookup and (u, i) not in lookup_samples:
+                inds_u[got] = u
+                inds_i[got] = i
+                lookup_samples[(u, i)] = True
                 got += 1
 
-        return U, I
+        return inds_u, inds_i
+
+    def get_indices_from_mf(self, n_indices):
+        inds_u = np.zeros((n_indices,))
+        inds_i = np.zeros((n_indices,))
+
+        lookup_samples = {}
+
+        got = 0
+        while got < n_indices:
+            u = np.random.choice(np.arange(self.n_users), p=self.prob_from_mf)
+            i = np.random.randint(self.n_items)
+
+            if (u, i) not in self.lookup and (u, i) not in lookup_samples:
+                inds_u[got] = u
+                inds_i[got] = i
+                lookup_samples[(u, i)] = True
+                got += 1
+
+        return inds_u, inds_i
+
+    def get_indices_from_ann(self, n_indices):
+        inds_u = np.zeros((n_indices,))
+        inds_i = np.zeros((n_indices,))
+
+        lookup_samples = {}
+
+        got = 0
+        while got < n_indices:
+            u = np.random.choice(np.arange(self.n_users), p=self.prob_from_ann)
+            i = np.random.randint(self.n_items)
+
+            if (u, i) not in self.lookup and (u, i) not in lookup_samples:
+                inds_u[got] = u
+                inds_i[got] = i
+                lookup_samples[(u, i)] = True
+                got += 1
+
+        return inds_u, inds_i
 
 
 class EarlyStoppingBestVal(Callback):
@@ -152,7 +232,7 @@ class InputCombinations(Layer):
         n = inputs._keras_shape[1]
         order = itertools.combinations(range(n), self.k)
 
-        xs = [inputs[list(o)] for o in order]
+        xs = [inputs[:, o] for o in order]
         output = K.stack(xs, axis=1)
 
         return output

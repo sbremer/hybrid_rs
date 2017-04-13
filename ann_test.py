@@ -1,8 +1,12 @@
 import pickle
 import numpy as np
+
+np.random.seed(1)
+
 import keras
 from keras.layers import Embedding, Reshape, Input, Dense
 from keras.layers.merge import Concatenate, Add
+from keras.constraints import maxnorm
 from keras.models import Model
 from util import EarlyStoppingBestVal
 from sklearn.metrics import mean_squared_error
@@ -54,15 +58,16 @@ def get_model_ann(meta_users, meta_items):
 
     vec_features = Concatenate(trainable=False)([vec_u_r, vec_i_r])
 
-    # ann_1 = Dense(500, kernel_initializer='uniform', activation='sigmoid')(vec_features)
-    # # ann_1 = keras.layers.Dropout(0.5)(ann_1)
-    # ann_2 = Dense(50, kernel_initializer='uniform', activation='sigmoid')(ann_1)
-    k = 2
-    comb = util.InputCombinations(k, trainable=False)(vec_features)
-    from keras.layers import LocallyConnected1D, Flatten
-    ann_2 = LocallyConnected1D(1, 1)(comb)
+    ann_1 = Dense(50, kernel_initializer='uniform', activation='sigmoid', kernel_constraint=maxnorm(2))(vec_features)
+    # ann_1 = keras.layers.Dropout(0.4)(ann_1)
+    ann_2 = Dense(10, kernel_initializer='uniform', activation='sigmoid', kernel_constraint=maxnorm(2))(ann_1)
 
-    ann_2 = Flatten()(ann_2)
+    # k = 2
+    # comb = util.InputCombinations(k, trainable=False)(vec_features)
+    # from keras.layers import LocallyConnected1D, Flatten
+    # ann_2 = LocallyConnected1D(1, 1)(comb)
+    #
+    # ann_2 = Flatten()(ann_2)
 
     ann_3 = Dense(1, kernel_initializer='uniform', activation='sigmoid')(ann_2)
 
@@ -100,11 +105,13 @@ y = (y - 0.5) * 0.2
 
 # Crossvalidation
 n_fold = 5
-user_coldstart = False
+user_coldstart = True
 if user_coldstart:
-    kfold = util.kfold_entries(n_fold, inds_u)
+    kfold = util.kfold_entries_plus(n_fold, inds_u, 3)
 else:
     kfold = util.kfold(n_fold, inds_u)
+
+kfold = util.kfold_entries_plus(n_fold, inds_u, 1)
 
 xval_train, xval_test = next(kfold)
 
@@ -125,7 +132,9 @@ model_ann = get_model_ann(meta_users, meta_items)
 
 callbacks = [EarlyStoppingBestVal('val_loss', patience=3, min_delta=0.0001)]
 
-model_bias.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
+mean = np.mean(y_train)
+
+model_bias.fit([inds_u_train, inds_i_train], y_train - mean, batch_size=500, epochs=100,
                                      validation_split=0.2, verbose=2, callbacks=callbacks)
 
 model_ann.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
@@ -133,14 +142,14 @@ model_ann.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
 
 # Calculate training error
 y = model_bias.predict([inds_u_train, inds_i_train])
-rmse_bias_train = sqrt(mean_squared_error(y_train * 5, y * 5))
+rmse_bias_train = sqrt(mean_squared_error((y_train - mean) * 5, y * 5))
 
 y = model_ann.predict([inds_u_train, inds_i_train])
 rmse_ann_train = sqrt(mean_squared_error(y_train * 5, y * 5))
 
 # Calculate test set error
 y = model_bias.predict([inds_u_test, inds_i_test])
-rmse_bias_test = sqrt(mean_squared_error(y_test * 5, y * 5))
+rmse_bias_test = sqrt(mean_squared_error((y_test - mean) * 5, y * 5))
 
 y = model_ann.predict([inds_u_test, inds_i_test])
 rmse_ann_test = sqrt(mean_squared_error(y_test * 5, y * 5))

@@ -1,6 +1,8 @@
 import pickle
 import numpy as np
 
+# np.random.seed(6)
+
 # Local imports
 import hybrid_model
 from hybrid_model import HybridModel
@@ -32,7 +34,8 @@ y = (y - 0.5) * 0.2
 n_fold = 5
 user_coldstart = False
 if user_coldstart:
-    kfold = util.kfold_entries(n_fold, inds_u)
+    # kfold = util.kfold_entries(n_fold, inds_u)
+    kfold = util.kfold_entries_plus(n_fold, inds_u, 3)
 else:
     kfold = util.kfold(n_fold, inds_u)
 
@@ -52,37 +55,68 @@ inds_u_test = inds_u[xval_test]
 inds_i_test = inds_i[xval_test]
 y_test = y[xval_test]
 
+# mean = np.mean(y_train)
+# y_train -= mean
+# y_test -= mean
+
 # Run initial (separate) training
 model.train_initial(inds_u_train, inds_i_train, y_train, True)
 print('Testing using test set before cross-training:')
 rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
 
 # Cross-train with half as many matrix entries than actual training set samples
-n_xtrain = int(n_train * 0.5)
+n_xtrain = int(n_train * 0.8)
 
 rmses_mf = [rmse_mf]
 rmses_ann = [rmse_ann]
 
+vloss_mf = []
+vloss_ann = []
+
 hybrid_model.batch_size = 1024
 hybrid_model.val_split = 0.25
 
-if user_coldstart:
-    print('User coldstart: Initial MF Training step')
-    model.step_mf(int(n_xtrain * 6), False)
+# if user_coldstart:
+#     print('User coldstart: Initial MF Training step')
+#     history_mf = model.step_mf(int(n_xtrain * 6), False)
+#
+#     vloss_mf.append(min(history_mf.history['val_loss']))
+#
+#     rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
+#
+#     rmses_mf.append(rmse_mf)
+#     rmses_ann.append(rmse_ann)
 
+# Alternating cross-training
+for i in range(5):
+    print('Training step {}'.format(i + 1))
+
+    # ANN step
+    history_ann = model.step_ann(int(n_xtrain), True)
+    vloss_ann.append(min(history_ann.history['val_loss']))
+
+    # MF step
+    history_mf = model.step_mf(int(n_xtrain), True)
+    vloss_mf.append(min(history_mf.history['val_loss']))
+
+    # Test
+    print('Results after training step {}:'.format(i + 1))
     rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
 
     rmses_mf.append(rmse_mf)
     rmses_ann.append(rmse_ann)
 
 # Alternating cross-training
-for i in range(25):
+for i in range(5):
     print('Training step {}'.format(i + 1))
 
     # ANN step
-    model.step_ann(int(n_xtrain), True)
+    history_ann = model.step_ann(int(n_xtrain), True, 0.5)
+    vloss_ann.append(min(history_ann.history['val_loss']))
+
     # MF step
-    model.step_mf(int(n_xtrain), True)
+    history_mf = model.step_mf(int(n_xtrain), True, 0.5)
+    vloss_mf.append(min(history_mf.history['val_loss']))
 
     # Test
     print('Results after training step {}:'.format(i + 1))
@@ -94,27 +128,34 @@ for i in range(25):
 import matplotlib.pyplot as plt
 
 x = np.arange(len(rmses_mf))
-plt.plot(x, rmses_mf, 'r-', x, rmses_ann, 'b-')
-plt.legend(['RMSE MF', 'RMSE ANN'])
-plt.show()
+f, axarr = plt.subplots(2, sharex=True)
+axarr[0].plot(x, rmses_mf, 'r-', x, rmses_ann, 'b-')
+axarr[0].legend(['RMSE MF', 'RMSE ANN'])
+axarr[1].plot(x[1:], vloss_mf, 'r--', x[1 if user_coldstart else 1:], vloss_ann, 'b--')
+axarr[1].legend(['VLOSS MF', 'VLOSS ANN'])
+f.show()
 
-for factor in np.arange(0.25, 1.26, 0.25):
-    print('Factor for cross training: {}'.format(factor))
+# for factor in np.arange(0.25, 1.26, 0.25):
+#     print('Factor for cross training: {}'.format(factor))
+#
+#     # Cross-train with half as many matrix entries than actual training set samples
+#     n_xtrain = int(n_train * factor)
+#
+#     # Alternating cross-training
+#     for i in range(3):
+#         print('Training step {}'.format(i + 1))
+#         # MF step
+#         model.step_mf(int(n_xtrain), True)
+#         # ANN step
+#         model.step_ann(int(n_xtrain), True)
+#
+#         # Test
+#         print('Results after training step {}:'.format(i + 1))
+#         rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
+#
+#         rmses_mf.append(rmse_mf)
+#         rmses_ann.append(rmse_ann)
 
-    # Cross-train with half as many matrix entries than actual training set samples
-    n_xtrain = int(n_train * factor)
-
-    # Alternating cross-training
-    for i in range(3):
-        print('Training step {}'.format(i + 1))
-        # MF step
-        model.step_mf(int(n_xtrain), True)
-        # ANN step
-        model.step_ann(int(n_xtrain), True)
-
-        # Test
-        print('Results after training step {}:'.format(i + 1))
-        rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
-
-        rmses_mf.append(rmse_mf)
-        rmses_ann.append(rmse_ann)
+# Model min 5
+# RMSE MF: 0.9160 	MAE: 0.7192
+# RMSE ANN: 0.9404 	MAE: 0.7440

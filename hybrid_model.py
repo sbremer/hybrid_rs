@@ -5,7 +5,7 @@ from keras.layers.merge import Dot, Concatenate, Add
 from keras.models import Model
 from keras.callbacks import EarlyStopping
 from util import EarlyStoppingBestVal
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 from math import sqrt
 
 # Local imports
@@ -80,6 +80,8 @@ class HybridModel:
 
             added = Add()([bias_u_r, bias_i_r, ann_3])
 
+            # output_layer = Dense(1, activation='linear')(added)
+
             model = Model(inputs=[input_u, input_i], outputs=added)
 
         else:
@@ -92,22 +94,31 @@ class HybridModel:
 
         return model
 
-    def _prepare_step_data(self, n_xsize, model, shuffle):
+    def _prepare_step_data(self, n_xsize, from_mf, shuffle, f_tsize):
         assert self.y_train is not None
 
         # Get n_xsize random indices not in the training set
-        inds_u_x, inds_i_x = self.index_gen.get_indices(n_xsize)
+        if from_mf:
+            inds_u_x, inds_i_x = self.index_gen.get_indices_from_mf(n_xsize)
+        else:
+            inds_u_x, inds_i_x = self.index_gen.get_indices_from_ann(n_xsize)
 
         # Get data for generated indices from other model
-        y_x = model.predict([inds_u_x, inds_i_x]).flatten()
+        if from_mf:
+            y_x = self.model_mf.predict([inds_u_x, inds_i_x]).flatten() + self.mean
+        else:
+            y_x = self.model_ann.predict([inds_u_x, inds_i_x]).flatten()
 
-        if model == self.model_mf:
-            y_x += self.mean
+        # Take only part of the training dataset
+        order = np.arange(self.n_train)
+        if f_tsize < 1.0:
+            np.random.shuffle(order)
+            order = order[:int(self.n_train * f_tsize)]
 
         # Combine training set and cross-train data
-        inds_u_xtrain = np.concatenate((inds_u_x, self.inds_u_train))
-        inds_i_xtrain = np.concatenate((inds_i_x, self.inds_i_train))
-        y_xtrain = np.concatenate((y_x, self.y_train))
+        inds_u_xtrain = np.concatenate((inds_u_x, self.inds_u_train[order]))
+        inds_i_xtrain = np.concatenate((inds_i_x, self.inds_i_train[order]))
+        y_xtrain = np.concatenate((y_x, self.y_train[order]))
 
         # Shuffle data
         if shuffle:
@@ -119,9 +130,9 @@ class HybridModel:
 
         return inds_u_xtrain, inds_i_xtrain, y_xtrain
 
-    def step_mf(self, n_xsize, shuffle=True):
+    def step_mf(self, n_xsize, shuffle=True, f_tsize=1.0):
         # Get cross-train data from ANN
-        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._prepare_step_data(n_xsize, self.model_ann, shuffle)
+        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._prepare_step_data(n_xsize, False, shuffle, f_tsize)
 
         # Update-train MF model with cross-train data
         history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain - self.mean, batch_size=batch_size, epochs=100,
@@ -129,9 +140,11 @@ class HybridModel:
         # history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain - self.mean, batch_size=batch_size,
         #                             epochs=1, validation_split=val_split, verbose=verbose)
 
-    def step_ann(self, n_xsize, shuffle=True):
+        return history
+
+    def step_ann(self, n_xsize, shuffle=True, f_tsize=1.0):
         # Get cross-train data from MF
-        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._prepare_step_data(n_xsize, self.model_mf, shuffle)
+        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._prepare_step_data(n_xsize, True, shuffle, f_tsize)
 
         # Update-train ANN model with cross-train data
         history = self.model_ann.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=batch_size, epochs=100,
@@ -139,18 +152,22 @@ class HybridModel:
         # history = self.model_ann.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=batch_size, epochs=1,
         #                              validation_split=val_split, verbose=verbose)
 
+        return history
+
     def test_mf(self, inds_u, inds_i, y, prnt=False):
-        y_pred = (self.model_mf.predict([inds_u, inds_i]) + self.mean) / 0.2 + 0.5
-        rmse = sqrt(mean_squared_error(y / 0.2 + 0.5, y_pred))
+        y_pred = (self.model_mf.predict([inds_u, inds_i]) + self.mean) / 0.2
+        rmse = sqrt(mean_squared_error(y / 0.2, y_pred))
+        mae = mean_absolute_error(y / 0.2, y_pred)
         if prnt:
-            print('RMSE MF: {0:.4f}'.format(rmse))
+            print('RMSE MF: {:.4f} \tMAE: {:.4f}'.format(rmse, mae))
         return rmse
 
     def test_ann(self, inds_u, inds_i, y, prnt=False):
-        y_pred = self.model_ann.predict([inds_u, inds_i]) / 0.2 + 0.5
-        rmse = sqrt(mean_squared_error(y / 0.2 + 0.5, y_pred))
+        y_pred = self.model_ann.predict([inds_u, inds_i]) / 0.2
+        rmse = sqrt(mean_squared_error(y / 0.2, y_pred))
+        mae = mean_absolute_error(y / 0.2, y_pred)
         if prnt:
-            print('RMSE ANN: {0:.4f}'.format(rmse))
+            print('RMSE ANN: {:.4f} \tMAE: {:.4f}'.format(rmse, mae))
         return rmse
 
     def test(self, inds_u_test, inds_i_test, y_test, prnt=False):
