@@ -4,11 +4,10 @@ import numpy as np
 np.random.seed(2)
 
 import keras
-from keras.layers import Embedding, Reshape, Input, Dense
+from keras.layers import Embedding, Reshape, Input, Dense, Flatten
 from keras.layers.merge import Concatenate, Add, Multiply, Dot
 from keras.constraints import maxnorm
 from keras.models import Model
-from util import EarlyStoppingBestVal
 from sklearn.metrics import mean_squared_error
 from math import sqrt
 
@@ -28,13 +27,14 @@ def get_model_bias():
     input_i = Input((1,))
 
     bias_u = Embedding(n_users, 1, input_length=1, embeddings_regularizer=regularizer)(input_u)
-    bias_u_r = Reshape((1,))(bias_u)
+    bias_u_r = Flatten()(bias_u)
     bias_i = Embedding(n_items, 1, input_length=1, embeddings_regularizer=regularizer)(input_i)
-    bias_i_r = Reshape((1,))(bias_i)
+    bias_i_r = Flatten()(bias_i)
 
-    added = Add()([bias_u_r, bias_i_r])
+    added = Concatenate()([bias_u_r, bias_i_r])
+    bias_out = util.BiasLayer()(added)
 
-    model = Model(inputs=[input_u, input_i], outputs=added)
+    model = Model(inputs=[input_u, input_i], outputs=bias_out)
 
     model.compile(loss='mse', optimizer='adam')
 
@@ -142,7 +142,7 @@ meta_users[np.isnan(meta_users)] = 0
 meta_items[np.isnan(meta_items)] = 0
 
 # Rescale ratings to ~(0.0, 1.0)
-y_org = y.copy()
+# y_org = y.copy()
 y = (y - 0.5) * 0.2
 
 # Crossvalidation
@@ -168,43 +168,26 @@ inds_i_test = inds_i[xval_test]
 y_test = y[xval_test]
 
 # Get models
-model_bias = get_model_bias()
-model_ann = get_model_ann(meta_users, meta_items)
-model_ann_test = get_model_ann_test(meta_users, meta_items)
+models = []
+models.append(('Bias Only', get_model_bias()))
+models.append(('ANN+ Bias', get_model_ann(meta_users, meta_items)))
+models.append(('ANN  Test', get_model_ann_test(meta_users, meta_items)))
 
-callbacks = [EarlyStoppingBestVal('val_loss', patience=3, min_delta=0.0001)]
+callbacks = [util.EarlyStoppingBestVal('val_loss', patience=3, min_delta=0.0001)]
 
-mean = np.mean(y_train)
+results = []
 
-model_bias.fit([inds_u_train, inds_i_train], y_train - mean, batch_size=500, epochs=100,
-                                     validation_split=0.2, verbose=2, callbacks=callbacks)
+for description, model in models:
+    model.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
+                   validation_split=0.2, verbose=2, callbacks=callbacks)
 
-model_ann.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
-                                     validation_split=0.2, verbose=2, callbacks=callbacks)
+    y = model.predict([inds_u_train, inds_i_train])
+    rmse_train = sqrt(mean_squared_error(y_train * 5, y * 5))
 
-model_ann_test.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
-                                     validation_split=0.2, verbose=2, callbacks=callbacks)
+    y = model.predict([inds_u_test, inds_i_test])
+    rmse_test = sqrt(mean_squared_error(y_test * 5, y * 5))
 
-# Calculate training error
-y = model_bias.predict([inds_u_train, inds_i_train])
-rmse_bias_train = sqrt(mean_squared_error((y_train - mean) * 5, y * 5))
+    results.append((description, rmse_train, rmse_test))
 
-y = model_ann.predict([inds_u_train, inds_i_train])
-rmse_ann_train = sqrt(mean_squared_error(y_train * 5, y * 5))
-
-y = model_ann_test.predict([inds_u_train, inds_i_train])
-rmse_ann_test_train = sqrt(mean_squared_error(y_train * 5, y * 5))
-
-# Calculate test set error
-y = model_bias.predict([inds_u_test, inds_i_test])
-rmse_bias_test = sqrt(mean_squared_error((y_test - mean) * 5, y * 5))
-
-y = model_ann.predict([inds_u_test, inds_i_test])
-rmse_ann_test = sqrt(mean_squared_error(y_test * 5, y * 5))
-
-y = model_ann_test.predict([inds_u_test, inds_i_test])
-rmse_ann_test_test = sqrt(mean_squared_error(y_test * 5, y * 5))
-
-print('Bias Only: Training {:.4f}  Testing {:.4f}'.format(rmse_bias_train, rmse_bias_test))
-print('ANN+ Bias: Training {:.4f}  Testing {:.4f}'.format(rmse_ann_train, rmse_ann_test))
-print('ANN  Test: Training {:.4f}  Testing {:.4f}'.format(rmse_ann_test_train, rmse_ann_test_test))
+for description, rmse_train, rmse_test in results:
+    print('{}: Training {:.4f}  Testing {:.4f}'.format(description, rmse_train, rmse_test))
