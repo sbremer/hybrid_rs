@@ -315,8 +315,8 @@ implicit = implicit / np.sqrt(np.maximum(1, ratings_user[:, None]))
 models = []
 # models.append(('Bias Only', get_model_bias()))
 # models.append(('MF + Bias', get_model_mf(50)))
-models.append(('MF + Impl', get_model_mf_implicit(20, implicit)))
-# models.append(('ANN+ Bias', get_model_ann(meta_users, meta_items)))
+# models.append(('MF + Impl', get_model_mf_implicit(20, implicit)))
+models.append(('ANN+ Bias', get_model_ann(meta_users, meta_items)))
 # models.append(('ANN  Test', get_model_ann_test(meta_users, meta_items)))
 # models.append(('ANN Combi', get_model_ann_combinatory(meta_users, meta_items)))
 
