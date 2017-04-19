@@ -15,6 +15,9 @@ hybrid_model.bias_ann = True
 (meta_users, meta_items) = pickle.load(open('data/imdb_metadata.pickle', 'rb'))
 (_, inds_u, inds_i, y) = pickle.load(open('data/cont.pickle', 'rb'))
 
+inds_u = inds_u.astype(np.int)
+inds_i = inds_i.astype(np.int)
+
 # Normalize features and set Nans to zero (=mean)
 meta_users = (meta_users - np.nanmean(meta_users, axis=0)) / np.nanstd(meta_users, axis=0)
 meta_items = (meta_items - np.nanmean(meta_items, axis=0)) / np.nanstd(meta_items, axis=0)
@@ -27,7 +30,7 @@ y = (y - 0.5) * 0.2
 
 # Crossvalidation
 n_fold = 5
-user_coldstart = True
+user_coldstart = False
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)
 else:
@@ -82,14 +85,14 @@ for xval_train, xval_test in kfold:
     #     model.step_mf(int(n_xtrain * 4), True)
 
     # Alternating cross-training
-    for i in range(10):
+    for i in range(1):
         print('Training step {}'.format(i + 1))
 
         # ANN step
-        history_ann = model.step_ann(f_xsize, f_tsize, True)
+        history_ann = model.step_ann(0.3, f_tsize, True)
 
         # MF step
-        history_mf = model.step_mf(f_xsize, f_tsize, True)
+        history_mf = model.step_mf(0.5, f_tsize, True)
 
         # Test
         print('Results after training step {}:'.format(i + 1))

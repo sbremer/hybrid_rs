@@ -64,10 +64,11 @@ class IndexGen:
         # Create probability distributions for getting data from MF and ANN
         counts = np.bincount(inds_u.astype(np.int32), minlength=n_users)
 
-        counts = np.maximum(counts, 5)
+        counts_mf = np.maximum(counts - 15, 1)
+        counts_ann = np.maximum(counts, 4) ** 2
 
-        self.prob_from_mf = counts / sum(counts)
-        self.prob_from_ann = (1 / counts) / sum(1 / counts)
+        self.prob_from_mf = counts_mf / sum(counts_mf)
+        self.prob_from_ann = (1 / counts_ann) / sum(1 / counts_ann)
 
         # Create and fill entry lookup table
         self.lookup = {}
@@ -75,8 +76,8 @@ class IndexGen:
             self.lookup[u_i] = True
 
     def get_indices(self, n_indices):
-        inds_u = np.zeros((n_indices,))
-        inds_i = np.zeros((n_indices,))
+        inds_u = np.zeros((n_indices,), np.int)
+        inds_i = np.zeros((n_indices,), np.int)
 
         lookup_samples = {}
 
@@ -94,8 +95,8 @@ class IndexGen:
         return inds_u, inds_i
 
     def get_indices_from_mf(self, n_indices):
-        inds_u = np.zeros((n_indices,))
-        inds_i = np.zeros((n_indices,))
+        inds_u = np.zeros((n_indices,), np.int)
+        inds_i = np.zeros((n_indices,), np.int)
 
         lookup_samples = {}
 
@@ -113,8 +114,8 @@ class IndexGen:
         return inds_u, inds_i
 
     def get_indices_from_ann(self, n_indices):
-        inds_u = np.zeros((n_indices,))
-        inds_i = np.zeros((n_indices,))
+        inds_u = np.zeros((n_indices,), np.int)
+        inds_i = np.zeros((n_indices,), np.int)
 
         lookup_samples = {}
 
@@ -233,7 +234,7 @@ class InputCombinations(Layer):
         order = itertools.combinations(range(n), self.k)
 
         xs = [inputs[:, o] for o in order]
-        output = K.stack(xs, axis=1)
+        output = K.stack(xs, axis=2)
 
         return output
 

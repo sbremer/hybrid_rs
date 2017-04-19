@@ -129,15 +129,15 @@ def get_model_ann(meta_users, meta_items):
     n_items, features_items = meta_items.shape[:2]
 
     vec_u = Embedding(n_users, features_user, input_length=1, trainable=False)(input_u)
-    vec_u_r = Reshape((features_user,))(vec_u)
+    vec_u_r = Flatten()(vec_u)
     vec_i = Embedding(n_items, features_items, input_length=1, trainable=False)(input_i)
-    vec_i_r = Reshape((features_items,))(vec_i)
+    vec_i_r = Flatten()(vec_i)
 
     vec_features = Concatenate(trainable=False)([vec_u_r, vec_i_r])
 
-    ann_1 = Dense(50, kernel_initializer='uniform', activation='sigmoid', kernel_constraint=maxnorm(2))(vec_features)
+    ann_1 = Dense(100, kernel_initializer='uniform', activation='sigmoid', kernel_constraint=maxnorm(2))(vec_features)
     # ann_1 = keras.layers.Dropout(0.4)(ann_1)
-    ann_2 = Dense(10, kernel_initializer='uniform', activation='sigmoid', kernel_constraint=maxnorm(2))(ann_1)
+    ann_2 = Dense(20, kernel_initializer='uniform', activation='sigmoid', kernel_constraint=maxnorm(2))(ann_1)
 
     # k = 2
     # comb = util.InputCombinations(k, trainable=False)(vec_features)
@@ -149,15 +149,15 @@ def get_model_ann(meta_users, meta_items):
     ann_3 = Dense(1, kernel_initializer='uniform', activation='sigmoid')(ann_2)
 
     bias_u = Embedding(n_users, 1, input_length=1, embeddings_regularizer=regularizer)(input_u)
-    bias_u_r = Reshape((1,))(bias_u)
+    bias_u_r = Flatten()(bias_u)
     bias_i = Embedding(n_items, 1, input_length=1, embeddings_regularizer=regularizer)(input_i)
-    bias_i_r = Reshape((1,))(bias_i)
+    bias_i_r = Flatten()(bias_i)
 
     added = Add()([bias_u_r, bias_i_r, ann_3])
 
     model = Model(inputs=[input_u, input_i], outputs=added)
 
-    model.compile(loss='mse', optimizer='adam')
+    model.compile(loss='mse', optimizer='nadam')
 
     model.layers[2].set_weights([meta_users])
     model.layers[3].set_weights([meta_items])
@@ -176,22 +176,25 @@ def get_model_ann_test(meta_users, meta_items):
     n_items, features_items = meta_items.shape[:2]
 
     vec_u = Embedding(n_users, features_user, input_length=1, trainable=False)(input_u)
-    vec_u_r = Reshape((features_user,))(vec_u)
+    vec_u_r = Flatten()(vec_u)
     vec_i = Embedding(n_items, features_items, input_length=1, trainable=False)(input_i)
-    vec_i_r = Reshape((features_items,))(vec_i)
+    vec_i_r = Flatten()(vec_i)
 
     ann_u_1 = Dense(100, kernel_initializer='uniform', activation='sigmoid')(vec_u_r)
-    ann_u_2 = Dense(10, kernel_initializer='uniform', activation='sigmoid')(ann_u_1)
+    ann_u_2 = Dense(20, kernel_initializer='uniform', activation='sigmoid')(ann_u_1)
 
     ann_i_1 = Dense(100, kernel_initializer='uniform', activation='sigmoid')(vec_i_r)
-    ann_i_2 = Dense(10, kernel_initializer='uniform', activation='sigmoid')(ann_i_1)
+    ann_i_2 = Dense(20, kernel_initializer='uniform', activation='sigmoid')(ann_i_1)
 
-    ann_mlp = Dot(1)([ann_u_2, ann_i_2])
+    # ann_mlp = Dot(1)([ann_u_2, ann_i_2])
+    ann_combined = Concatenate()([ann_u_2, ann_i_2])
+
+    ann_mlp = Dense(10, kernel_initializer='uniform', activation='sigmoid')(ann_combined)
 
     bias_u = Embedding(n_users, 1, input_length=1, embeddings_regularizer=regularizer)(input_u)
-    bias_u_r = Reshape((1,))(bias_u)
+    bias_u_r = Flatten()(bias_u)
     bias_i = Embedding(n_items, 1, input_length=1, embeddings_regularizer=regularizer)(input_i)
-    bias_i_r = Reshape((1,))(bias_i)
+    bias_i_r = Flatten()(bias_i)
 
     added = Concatenate()([bias_u_r, bias_i_r, ann_mlp])
 
@@ -199,7 +202,55 @@ def get_model_ann_test(meta_users, meta_items):
 
     model = Model(inputs=[input_u, input_i], outputs=ann_out)
 
-    model.compile(loss='mse', optimizer='adam')
+    model.compile(loss='mse', optimizer='nadam')
+
+    model.layers[2].set_weights([meta_users])
+    model.layers[3].set_weights([meta_items])
+
+    return model
+
+
+def get_model_ann_combinatory(meta_users, meta_items):
+    lmdba = 0.00001
+    regularizer = keras.regularizers.l2(lmdba)
+
+    input_u = Input((1,))
+    input_i = Input((1,))
+
+    n_users, features_user = meta_users.shape[:2]
+    n_items, features_items = meta_items.shape[:2]
+
+    vec_u = Embedding(n_users, features_user, input_length=1, trainable=False)(input_u)
+    vec_u_r = Flatten()(vec_u)
+    vec_i = Embedding(n_items, features_items, input_length=1, trainable=False)(input_i)
+    vec_i_r = Flatten()(vec_i)
+
+    vec_features = Concatenate()([vec_u_r, vec_i_r])
+
+    # ann_1 = Dense(100, kernel_initializer='uniform', activation='sigmoid', kernel_constraint=maxnorm(2))(vec_features)
+    # ann_1 = keras.layers.Dropout(0.4)(ann_1)
+    # ann_2 = Dense(20, kernel_initializer='uniform', activation='sigmoid', kernel_constraint=maxnorm(2))(ann_1)
+
+    k = 2
+    comb = util.InputCombinations(k)(vec_features)
+
+    from keras.layers import LocallyConnected1D
+    ann_2 = LocallyConnected1D(10, 1, activation='sigmoid')(comb)
+
+    ann_2 = Flatten()(ann_2)
+
+    ann_3 = Dense(1, kernel_initializer='uniform', activation='sigmoid')(ann_2)
+
+    bias_u = Embedding(n_users, 1, input_length=1, embeddings_regularizer=regularizer)(input_u)
+    bias_u_r = Flatten()(bias_u)
+    bias_i = Embedding(n_items, 1, input_length=1, embeddings_regularizer=regularizer)(input_i)
+    bias_i_r = Flatten()(bias_i)
+
+    added = Add()([bias_u_r, bias_i_r, ann_3])
+
+    model = Model(inputs=[input_u, input_i], outputs=added)
+
+    model.compile(loss='mse', optimizer='nadam')
 
     model.layers[2].set_weights([meta_users])
     model.layers[3].set_weights([meta_items])
@@ -252,9 +303,10 @@ y_test = y[xval_test]
 implicit = np.zeros((n_users, n_items))
 ratings_user = np.zeros(n_users)
 
-for u, i in zip(inds_u_train, inds_i_train):
-    implicit[u, i] = 1.0
-    ratings_user[u] += 1
+for u, i, r in zip(inds_u_train, inds_i_train, y_train):
+    if r >= 0.5:
+        implicit[u, i] = 1.0
+        ratings_user[u] += 1
 
 implicit = implicit / np.sqrt(np.maximum(1, ratings_user[:, None]))
 
@@ -266,6 +318,7 @@ models = []
 models.append(('MF + Impl', get_model_mf_implicit(20, implicit)))
 # models.append(('ANN+ Bias', get_model_ann(meta_users, meta_items)))
 # models.append(('ANN  Test', get_model_ann_test(meta_users, meta_items)))
+# models.append(('ANN Combi', get_model_ann_combinatory(meta_users, meta_items)))
 
 callbacks = [util.EarlyStoppingBestVal('val_loss', patience=3, min_delta=0.0001)]
 
