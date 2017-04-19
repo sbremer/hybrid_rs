@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-np.random.seed(2)
+np.random.seed(0)
 
 import keras
 from keras.layers import Embedding, Reshape, Input, Dense, Flatten
@@ -38,6 +38,83 @@ def get_model_bias():
 
     model.compile(loss='mse', optimizer='adam')
 
+    return model
+
+
+def get_model_mf(n_factors=20):
+    lmdba = 0.00005
+    regularizer = keras.regularizers.l2(lmdba)
+
+    # Hardcoded for now
+    n_users = 943
+    n_items = 1682
+
+    input_u = Input((1,))
+    input_i = Input((1,))
+
+    vec_u = Embedding(n_users, n_factors, input_length=1, embeddings_regularizer=regularizer)(input_u)
+    vec_u_r = Reshape((n_factors,))(vec_u)
+    vec_i = Embedding(n_items, n_factors, input_length=1, embeddings_regularizer=regularizer)(input_i)
+    vec_i_r = Reshape((n_factors,))(vec_i)
+
+    mf = Dot(1)([vec_u_r, vec_i_r])
+
+    bias_u = Embedding(n_users, 1, input_length=1, embeddings_regularizer=regularizer)(input_u)
+    bias_u_r = Reshape((1,))(bias_u)
+    bias_i = Embedding(n_items, 1, input_length=1, embeddings_regularizer=regularizer)(input_i)
+    bias_i_r = Reshape((1,))(bias_i)
+
+    added = Concatenate()([bias_u_r, bias_i_r, mf])
+
+    mf_out = util.BiasLayer()(added)
+
+    model = Model(inputs=[input_u, input_i], outputs=mf_out)
+
+    # Compile and return model
+    model.compile(loss='mse', optimizer='nadam')
+    return model
+
+
+def get_model_mf_implicit(n_factors, implicit):
+    lmdba = 0.00005
+    lmdba = 0.00007
+    regularizer = keras.regularizers.l2(lmdba)
+
+    # Hardcoded for now
+    n_users = 943
+    n_items = 1682
+
+    input_u = Input((1,))
+    input_i = Input((1,))
+
+    vec_u = Embedding(n_users, n_factors, input_length=1, embeddings_regularizer=regularizer)(input_u)
+    vec_u_r = Flatten()(vec_u)
+    vec_i = Embedding(n_items, n_factors, input_length=1, embeddings_regularizer=regularizer)(input_i)
+    vec_i_r = Flatten()(vec_i)
+
+    vec_implicit = Embedding(n_users, n_items, input_length=1, trainable=False)(input_u)
+    implicit_factors = Dense(n_factors, kernel_initializer='normal', activation='linear', kernel_regularizer=regularizer)(vec_implicit)
+    implicit_factors = Flatten()(implicit_factors)
+
+    vec_u_added = Add()([vec_u_r, implicit_factors])
+
+    mf = Dot(1)([vec_u_added, vec_i_r])
+
+    bias_u = Embedding(n_users, 1, input_length=1, embeddings_regularizer=regularizer)(input_u)
+    bias_u_r = Flatten()(bias_u)
+    bias_i = Embedding(n_items, 1, input_length=1, embeddings_regularizer=regularizer)(input_i)
+    bias_i_r = Flatten()(bias_i)
+
+    added = Concatenate()([bias_u_r, bias_i_r, mf])
+
+    mf_out = util.BiasLayer()(added)
+
+    model = Model(inputs=[input_u, input_i], outputs=mf_out)
+
+    model.layers[1].set_weights([implicit])
+
+    # Compile and return model
+    model.compile(loss='mse', optimizer='nadam')
     return model
 
 
@@ -133,7 +210,12 @@ def get_model_ann_test(meta_users, meta_items):
 (meta_users, meta_items) = pickle.load(open('data/imdb_metadata.pickle', 'rb'))
 (_, inds_u, inds_i, y) = pickle.load(open('data/cont.pickle', 'rb'))
 
-# meta_items = meta_items[:, 0:19]
+inds_u = inds_u.astype(np.int)
+inds_i = inds_i.astype(np.int)
+
+
+n_users = 943
+n_items = 1682
 
 # Normalize features and set Nans to zero (=mean)
 meta_users = (meta_users - np.nanmean(meta_users, axis=0)) / np.nanstd(meta_users, axis=0)
@@ -167,13 +249,29 @@ inds_u_test = inds_u[xval_test]
 inds_i_test = inds_i[xval_test]
 y_test = y[xval_test]
 
+implicit = np.zeros((n_users, n_items))
+ratings_user = np.zeros(n_users)
+
+for u, i in zip(inds_u_train, inds_i_train):
+    implicit[u, i] = 1.0
+    ratings_user[u] += 1
+
+implicit = implicit / np.sqrt(np.maximum(1, ratings_user[:, None]))
+
+
 # Get models
 models = []
-models.append(('Bias Only', get_model_bias()))
-models.append(('ANN+ Bias', get_model_ann(meta_users, meta_items)))
-models.append(('ANN  Test', get_model_ann_test(meta_users, meta_items)))
+# models.append(('Bias Only', get_model_bias()))
+# models.append(('MF + Bias', get_model_mf(50)))
+models.append(('MF + Impl', get_model_mf_implicit(20, implicit)))
+# models.append(('ANN+ Bias', get_model_ann(meta_users, meta_items)))
+# models.append(('ANN  Test', get_model_ann_test(meta_users, meta_items)))
 
 callbacks = [util.EarlyStoppingBestVal('val_loss', patience=3, min_delta=0.0001)]
+
+mean = np.mean(y_train)
+# y_train = y_train - mean
+# y_test = y_test - mean
 
 results = []
 
