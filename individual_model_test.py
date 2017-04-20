@@ -258,8 +258,16 @@ def get_model_ann_combinatory(meta_users, meta_items):
     return model
 
 
+def get_model_rf_regressor():
+    from sklearn.ensemble import RandomForestRegressor
+
+    model = RandomForestRegressor(30, n_jobs=-1)
+
+    return model
+
+
 (meta_users, meta_items) = pickle.load(open('data/imdb_metadata.pickle', 'rb'))
-(_, inds_u, inds_i, y) = pickle.load(open('data/cont.pickle', 'rb'))
+(X, inds_u, inds_i, y) = pickle.load(open('data/cont.pickle', 'rb'))
 
 inds_u = inds_u.astype(np.int)
 inds_i = inds_i.astype(np.int)
@@ -310,17 +318,20 @@ for u, i, r in zip(inds_u_train, inds_i_train, y_train):
 
 implicit = implicit / np.sqrt(np.maximum(1, ratings_user[:, None]))
 
+callbacks = [util.EarlyStoppingBestVal('val_loss', patience=3, min_delta=0.0001)]
+
+# Keras Parameters:
+keras_params = {'batch_size': 500, 'epochs': 100, 'validation_split': 0.2, 'verbose': 2, 'callbacks': callbacks}
 
 # Get models
 models = []
-# models.append(('Bias Only', get_model_bias()))
-# models.append(('MF + Bias', get_model_mf(50)))
-# models.append(('MF + Impl', get_model_mf_implicit(20, implicit)))
-models.append(('ANN+ Bias', get_model_ann(meta_users, meta_items)))
-# models.append(('ANN  Test', get_model_ann_test(meta_users, meta_items)))
-# models.append(('ANN Combi', get_model_ann_combinatory(meta_users, meta_items)))
-
-callbacks = [util.EarlyStoppingBestVal('val_loss', patience=3, min_delta=0.0001)]
+models.append(('Bias Only', get_model_bias(), keras_params))
+# models.append(('MF + Bias', get_model_mf(50), keras_params))
+# models.append(('MF + Impl', get_model_mf_implicit(20, implicit), keras_params))
+# models.append(('ANN+ Bias', get_model_ann(meta_users, meta_items), keras_params))
+# models.append(('ANN  Test', get_model_ann_test(meta_users, meta_items), keras_params))
+# models.append(('ANN Combi', get_model_ann_combinatory(meta_users, meta_items), keras_params))
+# models.append(('RF Regres', get_model_rf_regressor(), {}))
 
 mean = np.mean(y_train)
 # y_train = y_train - mean
@@ -328,9 +339,8 @@ mean = np.mean(y_train)
 
 results = []
 
-for description, model in models:
-    model.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
-                   validation_split=0.2, verbose=2, callbacks=callbacks)
+for description, model, params in models:
+    model.fit([inds_u_train, inds_i_train], y_train, **params)
 
     y = model.predict([inds_u_train, inds_i_train])
     rmse_train = sqrt(mean_squared_error(y_train * 5, y * 5))

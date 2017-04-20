@@ -154,21 +154,65 @@ n_items, features_items = meta_items.shape[:2]
 
 implicit = np.zeros((n_users, n_items))
 
+lookup = {}
+
 # Use ratings over the threshold as implicit feedback
 for u, i, r in zip(inds_u_train, inds_i_train, y_train):
-    if r >= 0.5:
+    if r >= 0.3:
         implicit[u, i] = 1.0
+
+    lookup[(u, i)] = True
 
 # Normalize using sqrt (ref. SVD++ paper)
 implicit_norm = implicit / np.sqrt(np.maximum(1, np.sum(implicit, axis=1)[:, None]))
 
+user_ratings = np.sum(implicit, axis=1).astype(np.int)
+
+# User Cutoff
+user_ratings_cut = int(np.median(user_ratings))
+
+# Generate xtrain indicies
+user_xtrain = np.maximum(0, user_ratings_cut - user_ratings)
+
+n_xtrain = int(np.sum(user_xtrain))
+inds_u_xtrain = np.zeros(n_xtrain, np.int)
+inds_i_xtrain = np.zeros(n_xtrain, np.int)
+
+at = 0
+for u, user_n_xtrain in enumerate(user_xtrain):
+    got = 0
+    lookup_samples = {}
+    while got < user_n_xtrain:
+        i = np.random.randint(n_items)
+
+        if (u, i) not in lookup and (u, i) not in lookup_samples:
+            inds_u_xtrain[at] = u
+            inds_i_xtrain[at] = i
+            lookup_samples[(u, i)] = True
+            got += 1
+            at += 1
+
+# Split test data (short/long-tail)
+user_longtail = user_xtrain > 0
+samples_test_longtail = user_longtail[inds_u_test]
+
+inds_u_test_longtail = inds_u_test[samples_test_longtail]
+inds_i_test_longtail = inds_i_test[samples_test_longtail]
+y_test_longtail = y_test[samples_test_longtail]
+
+inds_u_test_shorttail = inds_u_test[~samples_test_longtail]
+inds_i_test_shorttail = inds_i_test[~samples_test_longtail]
+y_test_shorttail = y_test[~samples_test_longtail]
+
+# Create models
 model_mf = get_model_mf_implicit(20, implicit_norm)
 model_ann = get_model_ann(meta_users, meta_items)
 
 # Training
 callbacks = [util.EarlyStoppingBestVal('val_loss', patience=5, min_delta=0.0001)]
 
-def test():
+
+def test_ann():
 
     y = model_ann.predict([inds_u_train, inds_i_train])
     rmse_train = sqrt(mean_squared_error(y_train * 5, y * 5))
@@ -178,6 +222,18 @@ def test():
 
     print('{}: Training {:.4f}  Testing {:.4f}'.format('ANN', rmse_train, rmse_test))
 
+    if not user_coldstart:
+
+        y = model_ann.predict([inds_u_test_shorttail, inds_i_test_shorttail])
+        rmse_test_shorttail = sqrt(mean_squared_error(y_test_shorttail * 5, y * 5))
+
+        y = model_ann.predict([inds_u_test_longtail, inds_i_test_longtail])
+        rmse_test_longtail = sqrt(mean_squared_error(y_test_longtail * 5, y * 5))
+
+        print('{}: Test(short) {:.4f}  Test(long) {:.4f}'.format('ANN', rmse_test_shorttail, rmse_test_longtail))
+
+
+def test_mf():
     y = model_mf.predict([inds_u_train, inds_i_train])
     rmse_train = sqrt(mean_squared_error(y_train * 5, y * 5))
 
@@ -185,6 +241,16 @@ def test():
     rmse_test = sqrt(mean_squared_error(y_test * 5, y * 5))
 
     print('{}: Training {:.4f}  Testing {:.4f}'.format('MF', rmse_train, rmse_test))
+
+    if not user_coldstart:
+
+        y = model_mf.predict([inds_u_test_shorttail, inds_i_test_shorttail])
+        rmse_test_shorttail = sqrt(mean_squared_error(y_test_shorttail * 5, y * 5))
+
+        y = model_mf.predict([inds_u_test_longtail, inds_i_test_longtail])
+        rmse_test_longtail = sqrt(mean_squared_error(y_test_longtail * 5, y * 5))
+
+        print('{}: Test(short) {:.4f}  Test(long) {:.4f}'.format('MF', rmse_test_shorttail, rmse_test_longtail))
 
 
 model_mf.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
@@ -194,4 +260,37 @@ model_ann.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
                    validation_split=0.1, verbose=2, callbacks=callbacks)
 
 print(' ')
-test()
+test_mf()
+test_ann()
+
+# Get generated xtrain ratings from ANN
+y_xtrain = model_ann.predict([inds_u_xtrain, inds_i_xtrain])
+
+y_xtrain = y_xtrain.flatten()
+
+inds_u_xtrain_con = np.concatenate((inds_u_train, inds_u_xtrain))
+inds_i_xtrain_con = np.concatenate((inds_i_train, inds_i_xtrain))
+y_xtrain_con = np.concatenate((y_train, y_xtrain))
+
+# Shuffle xtrain data
+order = np.arange(len(y_xtrain_con))
+np.random.shuffle(order)
+inds_u_xtrain_con = inds_u_xtrain_con[order]
+inds_i_xtrain_con = inds_i_xtrain_con[order]
+y_xtrain_con = y_xtrain_con[order]
+
+# Update implicit
+for u, i, r in zip(inds_u_xtrain, inds_i_xtrain, y_xtrain):
+    if r >= 0.5:
+        implicit[u, i] = 1.0
+
+implicit_norm = implicit / np.sqrt(np.maximum(1, np.sum(implicit, axis=1)[:, None]))
+model_mf.get_layer('implicit').set_weights([implicit_norm])
+
+# model_mf.fit([inds_u_xtrain_con, inds_i_xtrain_con], y_xtrain_con, batch_size=500, epochs=100,
+#                    validation_split=0.1, verbose=0, callbacks=callbacks)
+model_mf.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
+                   validation_split=0.1, verbose=0, callbacks=callbacks)
+
+print(' ')
+test_mf()
