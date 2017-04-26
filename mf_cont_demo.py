@@ -7,7 +7,7 @@ np.random.seed(0)
 
 # Keras
 from keras.layers import Input, Embedding, Dense, Flatten
-from keras.layers.merge import Dot, Concatenate, Add
+from keras.layers.merge import Dot, Concatenate, Add, Multiply
 from keras.models import Model
 from keras.regularizers import l2
 
@@ -190,6 +190,42 @@ def get_model_mf_cont_demo(n_factors, n_users_features, n_items_feature):
     return model
 
 
+def get_model_attribute_bias(n_users_features, n_items_feature):
+    lmdba = 0.00005
+    regularizer = l2(lmdba)
+
+    input_u = Input((1,))
+    input_i = Input((1,))
+
+    vec_features_u = Embedding(n_users, n_users_features, input_length=1, trainable=False, name='users_features')(input_u)
+    vec_features_u = Flatten()(vec_features_u)
+
+    vec_features_i = Embedding(n_items, n_items_feature, input_length=1, trainable=False, name='items_features')(input_i)
+    vec_features_i = Flatten()(vec_features_i)
+
+    factors_i = Dense(n_users_features, kernel_initializer='zeros', activation='linear',
+                      kernel_regularizer=l2(0.002), use_bias=False)(vec_features_i)
+
+    # 0.002: 1.0339
+
+    mult = Multiply()([factors_i, vec_features_u])
+
+    bias_u = Embedding(n_users, 1, input_length=1, embeddings_initializer='zeros', embeddings_regularizer=regularizer)(input_u)
+    bias_u = Flatten()(bias_u)
+    bias_i = Embedding(n_items, 1, input_length=1, embeddings_initializer='zeros', embeddings_regularizer=regularizer)(input_i)
+    bias_i = Flatten()(bias_i)
+
+    concat = Concatenate()([bias_u, bias_i, mult])
+
+    mf_out = Dense(1, activation='linear')(concat)
+
+    model = Model(inputs=[input_u, input_i], outputs=mf_out)
+
+    # Compile and return model
+    model.compile(loss='mse', optimizer='nadam')
+    return model
+
+
 def get_model_mf_implicit(n_factors, implicit):
     lmdba = 0.00007
     regularizer = l2(lmdba)
@@ -315,8 +351,10 @@ inds_i_test = inds_i[xval_test]
 y_test = y[xval_test]
 
 # Apply normalization to features
-users_features_norm = users_features / np.sqrt(np.maximum(1, np.sum(users_features, axis=1)[:, None]))
-items_features_norm = items_features / np.sqrt(np.maximum(1, np.sum(items_features, axis=1)[:, None]))
+users_features_norm_sqrt = users_features / np.sqrt(np.maximum(1, np.sum(users_features, axis=1)[:, None]))
+items_features_norm_sqrt = items_features / np.sqrt(np.maximum(1, np.sum(items_features, axis=1)[:, None]))
+
+items_features_norm = items_features / np.maximum(1, np.sum(items_features, axis=1)[:, None])
 
 # Calculate implicit matrix
 implicit = np.zeros((n_users, n_items))
@@ -330,27 +368,41 @@ implicit_norm = implicit / np.sqrt(np.maximum(1, np.sum(implicit, axis=1)[:, Non
 # Build models
 models = []
 
+# Global Avg
+model_ga = get_model_bias_custom(False, False)
+models.append(('GlAv', model_ga))
+
 # Bias
-# model_bias = get_model_bias()
-# models.append(('Bias', model_bias))
+model_bias = get_model_bias()
+models.append(('Bias', model_bias))
 
 # Bias Custom (without Keras)
-# model_bias_custom = get_model_bias_custom(include_user=False)
-# models.append(('BC_I', model_bias_custom))
+# model_bias_custom = get_model_bias_custom()
+# models.append(('BC_A', model_bias_custom))
+
+# Bias Custom (without Keras) Item only
+# model_bias_custom_i = get_model_bias_custom(include_user=False)
+# models.append(('BC_I', model_bias_custom_i))
 
 # Bias Item only
-model_bias_item = get_model_bias_item()
-models.append(('BK_I', model_bias_item))
+# model_bias_item = get_model_bias_item()
+# models.append(('BK_I', model_bias_item))
 
 # Ann
-model_annf = get_model_ann(users_features_norm, items_features_norm)
+model_annf = get_model_ann(users_features_norm_sqrt, items_features_norm_sqrt)
 models.append(('ANNF', model_annf))
 
 # MF CD
-model_mfcd = get_model_mf_cont_demo(20, n_users_features, n_items_features)
-model_mfcd.get_layer('users_features').set_weights([users_features_norm])
-model_mfcd.get_layer('items_features').set_weights([items_features_norm])
-models.append(('MFCD', model_mfcd))
+# model_mfcd = get_model_mf_cont_demo(20, n_users_features, n_items_features)
+# model_mfcd.get_layer('users_features').set_weights([users_features_norm_sqrt])
+# model_mfcd.get_layer('items_features').set_weights([items_features_norm_sqrt])
+# models.append(('MFCD', model_mfcd))
+
+# Bias User/Item Attributes
+model_buia = get_model_attribute_bias(n_users_features, n_items_features)
+model_buia.get_layer('users_features').set_weights([users_features])
+model_buia.get_layer('items_features').set_weights([items_features_norm])
+models.append(('BUIA', model_buia))
 
 # MF Implicit
 # model_mfim = get_model_mf_implicit(20, implicit_norm)
@@ -364,7 +416,7 @@ models.append(('MFCD', model_mfcd))
 # models.append(('MFEV', model_mfev))
 
 # Training
-callbacks = [util.EarlyStoppingBestVal('val_loss', patience=15, min_delta=0.00001)]
+callbacks = [util.EarlyStoppingBestVal('val_loss', patience=10, min_delta=0.00001)]
 
 for description, model in models:
     model.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
