@@ -1,12 +1,10 @@
 import pickle
+
 import numpy as np
 
-# np.random.seed(6)
-
-# Local imports
 import hybrid_model_attbias
-from hybrid_model_attbias import HybridModel
 import util
+from hybrid_model_attbias import HybridModel
 
 hybrid_model_attbias.verbose = 0
 

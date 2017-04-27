@@ -92,7 +92,7 @@ for xval_train, xval_test in kfold:
         history_ann = model.step_ann(0.3, f_tsize, True)
 
         # MF step
-        history_mf = model.step_mf(0.5, f_tsize, True)
+        history_mf = model._step_mf(0.5, f_tsize, True)
 
         # Test
         print('Results after training step {}:'.format(i + 1))
