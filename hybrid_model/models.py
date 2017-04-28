@@ -4,10 +4,13 @@ import numpy as np
 from keras.layers import Embedding, Input, Dense, Flatten
 from keras.layers.merge import Dot, Concatenate, Add, Multiply
 from keras.regularizers import l2
+from keras.initializers import Constant
 from keras.models import Model
 
 # Local
 from util import BiasLayer
+
+bias_init = Constant(0.606)
 
 
 class AbstractKerasModel:
@@ -25,7 +28,8 @@ class AbstractKerasModel:
 
 
 class SVDpp(AbstractKerasModel):
-    def __init__(self, n_users, n_items, n_factors=40, reg_latent=0.00005, reg_bias=0.00005, implicit_thresh_init=0.4, implicit_thresh_xtrain=0.7):
+    def __init__(self, n_users, n_items, n_factors=40, reg_latent=0.00005, reg_bias=0.00005, implicit_thresh_init=0.4,
+                 implicit_thresh_xtrain=0.7):
 
         self.n_users = n_users
         self.n_items = n_items
@@ -54,14 +58,16 @@ class SVDpp(AbstractKerasModel):
 
         mf = Dot(1)([vec_u_added, vec_i_r])
 
-        bias_u = Embedding(self.n_users, 1, input_length=1, embeddings_regularizer=l2(reg_bias))(input_u)
+        bias_u = Embedding(self.n_users, 1, input_length=1, embeddings_initializer='zeros',
+                           embeddings_regularizer=l2(reg_bias))(input_u)
         bias_u_r = Flatten()(bias_u)
-        bias_i = Embedding(self.n_items, 1, input_length=1, embeddings_regularizer=l2(reg_bias))(input_i)
+        bias_i = Embedding(self.n_items, 1, input_length=1, embeddings_initializer='zeros',
+                           embeddings_regularizer=l2(reg_bias))(input_i)
         bias_i_r = Flatten()(bias_i)
 
         added = Concatenate()([bias_u_r, bias_i_r, mf])
 
-        mf_out = BiasLayer()(added)
+        mf_out = BiasLayer(bias_initializer=bias_init)(added)
 
         self.model = Model(inputs=[input_u, input_i], outputs=mf_out)
 
@@ -86,7 +92,7 @@ class SVDpp(AbstractKerasModel):
 
 
 class AttributeBias(AbstractKerasModel):
-    def __init__(self, meta_users, meta_items, reg_att_bias=0.002, reg_bias=0.00005):
+    def __init__(self, meta_users, meta_items, reg_att_bias=0.002, reg_bias=0.00003):
         input_u = Input((1,))
         input_i = Input((1,))
 
@@ -101,7 +107,7 @@ class AttributeBias(AbstractKerasModel):
                                    name='items_features')(input_i)
         vec_features_i = Flatten()(vec_features_i)
 
-        factors_i = Dense(n_users_features, kernel_initializer='normal', activation='linear',
+        factors_i = Dense(n_users_features, kernel_initializer='zeros', activation='linear',
                           kernel_regularizer=l2(reg_att_bias), use_bias=False)(vec_features_i)
 
         mult = Multiply()([factors_i, vec_features_u])
@@ -115,7 +121,7 @@ class AttributeBias(AbstractKerasModel):
 
         concat = Concatenate()([bias_u, bias_i, mult])
 
-        cs_out = Dense(1)(concat)
+        cs_out = Dense(1, activation='linear', use_bias=True, bias_initializer=bias_init)(concat)
 
         self.model = Model(inputs=[input_u, input_i], outputs=cs_out)
 

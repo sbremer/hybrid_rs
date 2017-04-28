@@ -1,6 +1,8 @@
 import pickle
 import numpy as np
 
+np.random.seed(0)
+
 # Local imports
 from hybrid_model.hybrid import HybridModel, HybridConfig
 import util
@@ -40,8 +42,9 @@ y_test = y[xval_test]
 # Create config for model
 hybrid_config = HybridConfig(
     n_factors=40,
-    reg_bias=0.00005,
+    reg_bias_mf=0.00005,
     reg_latent=0.00005,
+    reg_bias_cs=0.00003,
     reg_att_bias=0.002,
     implicit_thresh_init=0.4,
     implicit_thresh_xtrain=0.7,
@@ -50,8 +53,8 @@ hybrid_config = HybridConfig(
     opt_mf_xtrain='adadelta',
     opt_cs_xtrain='adadelta',
     batch_size_init=512,
-    batch_size_xtrain=1024,
-    val_split_init=0.1,
+    batch_size_xtrain=512,
+    val_split_init=0.05,
     val_split_xtrain=0.2,
     xtrain_fsize_mf=0.2,
     xtrain_fsize_cs=0.2

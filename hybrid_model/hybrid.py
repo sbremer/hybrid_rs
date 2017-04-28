@@ -2,11 +2,6 @@ from typing import NewType, NamedTuple, List
 import numpy as np
 
 # Keras
-from keras.layers import Embedding, Input, Dense, Flatten
-from keras.layers.merge import Dot, Concatenate, Add, Multiply
-from keras.regularizers import l2
-from keras.models import Model
-from keras.callbacks import EarlyStopping
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from math import sqrt
 
@@ -15,7 +10,7 @@ from keras.optimizers import Optimizer
 # Local
 from hybrid_model.models import SVDpp, AttributeBias
 from hybrid_model.callbacks_custom import EarlyStoppingBestVal
-from hybrid_model.index_sampler import IndexSampler
+from hybrid_model.index_sampler import IndexSamplerTest as IndexSampler
 
 Matrix = NewType('Matrix', np.ndarray)
 
@@ -26,8 +21,9 @@ class HybridConfig(NamedTuple):
     """
 
     n_factors: int
-    reg_bias: float
+    reg_bias_mf: float
     reg_latent: float
+    reg_bias_cs: float
     reg_att_bias: float
 
     implicit_thresh_init: float
@@ -62,9 +58,9 @@ class HybridModel:
         self.n_items = meta_items.shape[0]
 
         # Build models
-        self.model_mf = SVDpp(self.n_users, self.n_items, config.n_factors, config.reg_latent, config.reg_bias,
+        self.model_mf = SVDpp(self.n_users, self.n_items, config.n_factors, config.reg_latent, config.reg_bias_mf,
                               config.implicit_thresh_init, config.implicit_thresh_xtrain)
-        self.model_cs = AttributeBias(meta_users, meta_items, config.reg_att_bias, config.reg_bias)
+        self.model_cs = AttributeBias(meta_users, meta_items, config.reg_att_bias, config.reg_bias_cs)
 
         # Callbacks for early stopping during one cross train iteration
         self.callbacks_mf = [EarlyStoppingBestVal('val_loss', patience=4)]
@@ -230,7 +226,7 @@ class HybridModel:
         rmse_cs = self.test_cs(x_test, y_test, prnt)
         return rmse_mf, rmse_cs
 
-    def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=True):
+    def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=False):
 
         order = np.arange(self.n_train + len(y_x))
 
