@@ -11,6 +11,7 @@ from keras.optimizers import Optimizer
 from hybrid_model.models import SVDpp, AttributeBias
 from hybrid_model.callbacks_custom import EarlyStoppingBestVal
 from hybrid_model.index_sampler import IndexSamplerTest as IndexSampler
+# from hybrid_model.index_sampler import IndexSampler
 
 Matrix = NewType('Matrix', np.ndarray)
 
@@ -34,8 +35,10 @@ class HybridConfig(NamedTuple):
     opt_mf_xtrain: Optimizer
     opt_cs_xtrain: Optimizer
 
-    batch_size_init: int
-    batch_size_xtrain: int
+    batch_size_init_mf: int
+    batch_size_init_cs: int
+    batch_size_xtrain_mf: int
+    batch_size_xtrain_cs: int
     val_split_init: float
     val_split_xtrain: float
 
@@ -113,9 +116,9 @@ class HybridModel:
         self.model_mf.recompute_implicit(self.x_train, self.y_train, True)
 
         # Train both models with the training data only
-        self.model_mf.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init, epochs=200,
+        self.model_mf.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_mf, epochs=200,
                           validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_mf)
-        self.model_cs.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init, epochs=200,
+        self.model_cs.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_cs, epochs=200,
                           validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_cs)
 
         # Keras fit method "unflattens" arrays on training. Undo this here
@@ -129,11 +132,11 @@ class HybridModel:
     def _train_xtrain(self, x_test=None, y_test=None):
 
         # Config for early stopping
-        patience = 4
+        patience = 5
         min_delta = 0.00005
 
         vloss_mf_min = float('inf')
-        epoch_min = 0
+        epoch_min = -1
 
         # Alternating cross-training
         for i in range(20):
@@ -156,7 +159,7 @@ class HybridModel:
                 vloss_mf_min = vloss_mf
                 epoch_min = i
             else:
-                if i > epoch_min + patience:
+                if i >= epoch_min + patience:
                     print('Stopping crosstraining after epoch {}'.format(i + 1))
                     break
 
@@ -176,7 +179,7 @@ class HybridModel:
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x)
 
         # Update-train MF model with cross-train data
-        history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain,
+        history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_mf,
                                     epochs=150, validation_split=self.config.val_split_xtrain, verbose=self.verbose,
                                     callbacks=self.callbacks_mf)
 
@@ -196,7 +199,7 @@ class HybridModel:
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x)
 
         # Update-train ANN model with cross-train data
-        history = self.model_cs.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain,
+        history = self.model_cs.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_cs,
                                     epochs=150, validation_split=self.config.val_split_xtrain, verbose=self.verbose,
                                     callbacks=self.callbacks_cs)
 

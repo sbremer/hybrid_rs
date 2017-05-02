@@ -30,19 +30,20 @@ kfold = list(kfold)
 
 from sklearn.model_selection import ParameterGrid
 
-param_grid_setup = dict(n_factors=[30, 40, 50],
-    reg_bias_mf=[0.00005],
+param_grid_setup = dict(n_factors=[50],
+    reg_bias_mf=[0.00002, 0.00005, 0.0001],
     reg_latent=[0.00005],
-    reg_bias_cs=[0.00003],
+    reg_bias_cs=[0.00002, 0.00005, 0.0001],
     reg_att_bias=[0.002],
     implicit_thresh_init=[0.4],
     implicit_thresh_xtrain=[0.7],
-    opt_mf_init=['nadam', 'adadelta'],
-    opt_cs_init=['nadam', 'adadelta'],
+    opt_mf_init=['adadelta'],
+    opt_cs_init=['nadam'],
     opt_mf_xtrain=['adadelta'],
     opt_cs_xtrain=['adadelta'],
     batch_size_init=[512],
-    batch_size_xtrain=[512],
+    batch_size_xtrain_mf=[512],
+    batch_size_xtrain_cs=[512],
     val_split_init=[0.05],
     val_split_xtrain=[0.2],
     xtrain_fsize_mf=[0.2],
@@ -60,7 +61,7 @@ rmses_cs_grid = np.zeros((n_grid,))
 for i, config in enumerate(param_grid):
     hybrid_config = HybridConfig(**config)
 
-    print('Now testing config: {}'.format(hybrid_config))
+    print('Now testing config {}: {}'.format(i, hybrid_config))
 
     # Init xval
     rmses_mf = []
@@ -88,7 +89,6 @@ for i, config in enumerate(param_grid):
         rmses_mf.append(rmse_mf)
         rmses_cs.append(rmse_cs)
 
-
     rmse_mf = np.mean(rmses_mf)
     rmse_cs = np.mean(rmses_cs)
     rmses_mf_grid[i] = rmse_mf
@@ -99,5 +99,7 @@ for i, config in enumerate(param_grid):
 i_mf_best = np.argmin(rmses_mf_grid)
 i_cs_best = np.argmin(rmses_cs_grid)
 
-print('Best config for MF: {}'.format(param_grid[i_mf_best]))
-print('Best config for CS: {}'.format(param_grid[i_cs_best]))
+print('Best performance for MF {}: {}'.format(i_mf_best, rmses_mf_grid[i_mf_best]))
+print(param_grid[i_mf_best])
+print('Best performance for CS {}: {}'.format(i_cs_best, rmses_cs_grid[i_cs_best]))
+print(param_grid[i_cs_best])
