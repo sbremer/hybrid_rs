@@ -1,5 +1,6 @@
 from typing import NewType, NamedTuple, List
 import numpy as np
+import copy
 
 # Keras
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -44,6 +45,10 @@ class HybridConfig(NamedTuple):
 
     xtrain_fsize_mf: float
     xtrain_fsize_cs: float
+
+    xtrain_patience: int
+    xtrain_max_epochs: int
+    xtrain_data_shuffle: bool
 
 
 class HybridModel:
@@ -132,8 +137,11 @@ class HybridModel:
     def _train_xtrain(self, x_test=None, y_test=None):
 
         # Config for early stopping
-        patience = 5
+        patience = self.config.xtrain_patience
         min_delta = 0.00005
+
+        best_weights_mf = None
+        best_weights_cs = None
 
         vloss_mf_min = float('inf')
         epoch_min = -1
@@ -156,12 +164,26 @@ class HybridModel:
 
             # Check for early stopping
             if vloss_mf < vloss_mf_min - min_delta:
+                if self.verbose > 0 or True:
+                    print('Min valloss {:.4f} at epoch {}'.format(vloss_mf, i + 1))
                 vloss_mf_min = vloss_mf
                 epoch_min = i
+                # best_weights_mf = copy.deepcopy(self.model_mf.model.get_weights())
+                # best_weights_cs = copy.deepcopy(self.model_cs.model.get_weights())
             else:
+                if self.verbose > 0 or True:
+                    print('Valloss {:.4f} at epoch {}'.format(vloss_mf, i + 1))
+
                 if i >= epoch_min + patience:
                     print('Stopping crosstraining after epoch {}'.format(i + 1))
                     break
+
+            if i + 1 >= self.config.xtrain_max_epochs:
+                break
+
+        # Set weights of best epoch
+        # self.model_mf.model.set_weights(best_weights_mf)
+        # self.model_cs.model.set_weights(best_weights_cs)
 
     def _step_mf(self, f_xsize):
         n_xtrain = int(self.n_train * f_xsize)
@@ -176,7 +198,7 @@ class HybridModel:
         self.model_mf.recompute_implicit([inds_u_x, inds_i_x], y_x)
 
         # Combine data with original training data
-        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x)
+        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
 
         # Update-train MF model with cross-train data
         history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_mf,
@@ -196,7 +218,7 @@ class HybridModel:
         y_x = self.model_mf.predict([inds_u_x, inds_i_x])
 
         # Combine data with original training data
-        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x)
+        inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
 
         # Update-train ANN model with cross-train data
         history = self.model_cs.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_cs,
@@ -229,7 +251,7 @@ class HybridModel:
         rmse_cs = self.test_cs(x_test, y_test, prnt)
         return rmse_mf, rmse_cs
 
-    def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=False):
+    def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=True):
 
         order = np.arange(self.n_train + len(y_x))
 

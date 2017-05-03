@@ -30,24 +30,28 @@ kfold = list(kfold)
 
 from sklearn.model_selection import ParameterGrid
 
-param_grid_setup = dict(n_factors=[50],
-    reg_bias_mf=[0.00002, 0.00005, 0.0001],
-    reg_latent=[0.00005],
-    reg_bias_cs=[0.00002, 0.00005, 0.0001],
-    reg_att_bias=[0.002],
-    implicit_thresh_init=[0.4],
-    implicit_thresh_xtrain=[0.7],
-    opt_mf_init=['adadelta'],
+param_grid_setup = dict(n_factors=[40],
+    reg_bias_mf=[0.00005],
+    reg_latent=[0.00003],
+    reg_bias_cs=[0.0001],
+    reg_att_bias=[0.0015],
+    implicit_thresh_init=[0.7],
+    implicit_thresh_xtrain=[0.85],
+    opt_mf_init=['nadam'],
     opt_cs_init=['nadam'],
     opt_mf_xtrain=['adadelta'],
     opt_cs_xtrain=['adadelta'],
-    batch_size_init=[512],
-    batch_size_xtrain_mf=[512],
-    batch_size_xtrain_cs=[512],
+    batch_size_init_mf=[512],
+    batch_size_init_cs=[1024],
+    batch_size_xtrain_mf=[256],
+    batch_size_xtrain_cs=[1024],
     val_split_init=[0.05],
-    val_split_xtrain=[0.2],
+    val_split_xtrain=[0.05],
     xtrain_fsize_mf=[0.2],
-    xtrain_fsize_cs=[0.2]
+    xtrain_fsize_cs=[0.15],
+    xtrain_patience=[5],
+    xtrain_max_epochs=[10],
+    xtrain_data_shuffle=[True]
 )
 
 param_grid = list(ParameterGrid(param_grid_setup))

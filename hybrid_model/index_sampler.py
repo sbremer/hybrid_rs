@@ -104,12 +104,12 @@ class IndexSamplerTest:
 
         # Calculate sample probability
 
-        user_dist_adj_from_cs = np.maximum(1, 30 - user_dist)
+        user_dist_adj_from_cs = np.maximum(1, 25 - user_dist)
         item_dist_adj_from_cs = np.maximum(1, 30 - item_dist)
         self.prob_from_cs_user = user_dist_adj_from_cs / np.sum(user_dist_adj_from_cs)
         self.prob_from_cs_item = item_dist_adj_from_cs / np.sum(item_dist_adj_from_cs)
 
-        self.n_xtrain_from_cs = np.sum(user_dist_adj_from_cs) * 4
+        self.n_xtrain_from_cs = np.sum(user_dist_adj_from_cs) * 3
         print('Xtrain from CS: {}'.format(self.n_xtrain_from_cs))
 
         self.prob_from_mf_user = user_dist / np.sum(user_dist)
