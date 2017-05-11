@@ -1,7 +1,7 @@
 import numpy as np
 
 # Keras
-from keras.layers import Embedding, Input, Dense, Flatten
+from keras.layers import Embedding, Input, Dense, Flatten, Lambda
 from keras.layers.merge import Dot, Concatenate, Add, Multiply
 from keras.regularizers import l2
 from keras.initializers import Constant
@@ -10,7 +10,8 @@ from keras.models import Model
 # Local
 from util import BiasLayer
 
-bias_init = Constant(0.606)
+# bias_init = Constant(0.606)
+bias_init = Constant(0.5)
 
 
 class AbstractKerasModel:
@@ -25,6 +26,36 @@ class AbstractKerasModel:
 
     def predict(self, x_test, **kwargs):
         return self.model.predict(x_test, **kwargs).flatten()
+
+
+class Ensemble(AbstractKerasModel):
+    def __init__(self, user_dist, item_dist):
+
+        input_u = Input((1,))
+        input_i = Input((1,))
+
+        result_mf = Input((1,))
+        result_cs = Input((1,))
+
+        d_u = Embedding(len(user_dist), 1, input_length=1, name='user_dist')(input_u)
+        d_u = Flatten()(d_u)
+        d_i = Embedding(len(item_dist), 1, input_length=1, name='item_dist')(input_i)
+        d_i = Flatten()(d_i)
+
+        dist = Concatenate()([d_u, d_i])
+
+        factor = Dense(1, activation='sigmoid', kernel_initializer='zeros', use_bias=True, bias_initializer=bias_init)(dist)
+
+        factor_1 = Lambda(lambda x: 1.0-x, output_shape=(1,))(factor)
+
+        result = Add()([Multiply()([factor, result_mf]), Multiply()([factor_1, result_cs])])
+
+        self.model = Model(inputs=[input_u, input_i, result_mf, result_cs], outputs=result)
+
+        self.model.get_layer('user_dist').set_weights([user_dist[:, None]])
+        self.model.get_layer('item_dist').set_weights([item_dist[:, None]])
+
+        self.model.compile('adadelta', 'mse')
 
 
 class SVDpp(AbstractKerasModel):
@@ -67,7 +98,7 @@ class SVDpp(AbstractKerasModel):
 
         added = Concatenate()([bias_u_r, bias_i_r, mf])
 
-        mf_out = BiasLayer(bias_initializer=bias_init)(added)
+        mf_out = BiasLayer(name='bias')(added)
 
         self.model = Model(inputs=[input_u, input_i], outputs=mf_out)
 
@@ -121,7 +152,8 @@ class AttributeBias(AbstractKerasModel):
 
         concat = Concatenate()([bias_u, bias_i, mult])
 
-        cs_out = Dense(1, activation='linear', use_bias=True, bias_initializer=bias_init)(concat)
+        cs_out = Dense(1, activation='linear', use_bias=True, bias_initializer=bias_init, name='bias')(concat)
+        # cs_out = BiasLayer(name='bias')(concat)
 
         self.model = Model(inputs=[input_u, input_i], outputs=cs_out)
 

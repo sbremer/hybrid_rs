@@ -5,6 +5,7 @@ np.random.seed(0)
 
 # Local imports
 from hybrid_model.hybrid import HybridModel, HybridConfig
+from hybrid_model import transform
 import util
 
 (inds_u, inds_i, y, users_features, items_features) = pickle.load(open('data/ml100k.pickle', 'rb'))
@@ -14,12 +15,9 @@ n_items, n_items_features = items_features.shape
 
 # items_features_norm = items_features / np.maximum(1, np.sum(items_features, axis=1)[:, None])
 
-# Rescale ratings to ~(0.0, 1.0)
-y = (y - 0.5) * 0.2
-
 # Crossvalidation
 n_fold = 5
-user_coldstart = False
+user_coldstart = True
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)
     # kfold = util.kfold_entries_plus(n_fold, inds_u, 3)
@@ -28,7 +26,7 @@ else:
 
 kfold = list(kfold)
 
-xval_train, xval_test = kfold[3]
+xval_train, xval_test = kfold[0]
 
 # Dataset training
 inds_u_train = inds_u[xval_train]
@@ -48,7 +46,7 @@ y_test = y[xval_test]
 hybrid_config = HybridConfig(
     n_factors=40,
     reg_bias_mf=0.00005,
-    reg_latent=0.00003,#2
+    reg_latent=0.00004,#2
     reg_bias_cs=0.0001,
     reg_att_bias=0.0015,
     implicit_thresh_init=0.7,
@@ -67,8 +65,22 @@ hybrid_config = HybridConfig(
     xtrain_fsize_cs=0.15,
     xtrain_patience=5,
     xtrain_max_epochs=10,
-    xtrain_data_shuffle=True
+    xtrain_data_shuffle=True,
+    transformation=transform.TransformationLinear
 )
+
+# None
+# RMSE MF: 0.9097 	MAE: 0.7159 	NDCG: 0.5091
+# RMSE ANN: 0.9343 	MAE: 0.7391 	NDCG: 0.4852
+# Linear
+# RMSE MF: 0.8940 	MAE: 0.7042 	NDCG: 0.5227
+# RMSE ANN: 0.9336 	MAE: 0.7380 	NDCG: 0.4842
+# LinearShift
+# RMSE MF: 0.9540 	MAE: 0.7407 	NDCG: 0.4953
+# RMSE ANN: 0.9684 	MAE: 0.7536 	NDCG: 0.4836
+# Quad
+# RMSE MF: 0.9087 	MAE: 0.7093 	NDCG: 0.5156
+# RMSE ANN: 0.9442 	MAE: 0.7385 	NDCG: 0.4837
 
 test_while_fit = True
 

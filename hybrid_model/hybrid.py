@@ -9,10 +9,12 @@ from math import sqrt
 from keras.optimizers import Optimizer
 
 # Local
-from hybrid_model.models import SVDpp, AttributeBias
+from hybrid_model.models import SVDpp, AttributeBias, Ensemble
 from hybrid_model.callbacks_custom import EarlyStoppingBestVal
 from hybrid_model.index_sampler import IndexSamplerTest as IndexSampler
 # from hybrid_model.index_sampler import IndexSampler
+from hybrid_model import metrics
+from hybrid_model.transform import Transformation
 
 Matrix = NewType('Matrix', np.ndarray)
 
@@ -50,6 +52,8 @@ class HybridConfig(NamedTuple):
     xtrain_max_epochs: int
     xtrain_data_shuffle: bool
 
+    transformation: Transformation
+
 
 class HybridModel:
     """
@@ -86,6 +90,8 @@ class HybridModel:
 
     def fit(self, x_train, y_train, x_test=None, y_test=None):
 
+        y_train = self.config.transformation.transform(y_train)
+
         self.x_train = x_train
         self.y_train = y_train
         self.n_train = len(y_train)
@@ -96,6 +102,45 @@ class HybridModel:
 
         # Init Index Sampler
         self.index_sampler = IndexSampler(self.user_dist, self.item_dist, self.x_train)
+
+        # Set initial global bias value to mean of training data
+        mean = np.mean(y_train).astype(np.float32)
+        self.model_mf.model.get_layer('bias').weights[0].set_value([mean])
+        self.model_cs.model.get_layer('bias').weights[1].set_value([mean])
+
+        # Compile model using optimizer used for initial training
+        self.model_mf.compile(self.config.opt_mf_init)
+        self.model_cs.compile(self.config.opt_cs_init)
+
+        # Initially train models separately
+        self._train_init(x_test, y_test)
+
+        # Recompile model using optimizer for cross training
+        self.model_mf.compile(self.config.opt_mf_xtrain)
+        self.model_cs.compile(self.config.opt_cs_xtrain)
+
+        # Run Cross-Training
+        self._train_xtrain(x_test, y_test)
+
+    def fit_test(self, x_train, y_train, x_test=None, y_test=None):
+
+        y_train = self.config.transformation.transform(y_train)
+
+        self.x_train = x_train
+        self.y_train = y_train
+        self.n_train = len(y_train)
+
+        # Get distribution of ratings per user and item
+        self.user_dist = np.bincount(x_train[0], minlength=self.n_users)
+        self.item_dist = np.bincount(x_train[1], minlength=self.n_items)
+
+        # Init Index Sampler
+        self.index_sampler = IndexSampler(self.user_dist, self.item_dist, self.x_train)
+
+        # Set initial global bias value to mean of training data
+        mean = np.mean(y_train)
+        self.model_mf.model.get_layer('bias').set_weights([mean])
+        self.model_cs.model.get_layer('bias').set_weights([mean])
 
         # Compile model using optimizer used for initial training
         self.model_mf.compile(self.config.opt_mf_init)
@@ -229,19 +274,31 @@ class HybridModel:
         return min(history.history['val_loss'])
 
     def test_mf(self, x, y, prnt=False):
-        y_pred = self.model_mf.predict(x) / 0.2
-        rmse = sqrt(mean_squared_error(y / 0.2, y_pred))
-        mae = mean_absolute_error(y / 0.2, y_pred)
+        y_pred = self.model_mf.predict(x)
+
+        y_pred = np.maximum(0.0, y_pred)
+        y_pred = np.minimum(1.0, y_pred)
+        y_pred = self.config.transformation.invtransform(y_pred)
+
+        rmse = metrics.rmse(y, y_pred)
+        mae = metrics.mae(y, y_pred)
+        ndcg = metrics.ndcg(y, y_pred, 5, x[0])
         if prnt:
-            print('RMSE MF: {:.4f} \tMAE: {:.4f}'.format(rmse, mae))
+            print('RMSE MF: {:.4f} \tMAE: {:.4f} \tNDCG: {:.4f}'.format(rmse, mae, ndcg))
         return rmse
 
     def test_cs(self, x, y, prnt=False):
-        y_pred = self.model_cs.predict(x) / 0.2
-        rmse = sqrt(mean_squared_error(y / 0.2, y_pred))
-        mae = mean_absolute_error(y / 0.2, y_pred)
+        y_pred = self.model_cs.predict(x)
+
+        y_pred = np.maximum(0.0, y_pred)
+        y_pred = np.minimum(1.0, y_pred)
+        y_pred = self.config.transformation.invtransform(y_pred)
+
+        rmse = metrics.rmse(y, y_pred)
+        mae = metrics.mae(y, y_pred)
+        ndcg = metrics.ndcg(y, y_pred, 5, x[0])
         if prnt:
-            print('RMSE ANN: {:.4f} \tMAE: {:.4f}'.format(rmse, mae))
+            print('RMSE ANN: {:.4f} \tMAE: {:.4f} \tNDCG: {:.4f}'.format(rmse, mae, ndcg))
         return rmse
 
     def test(self, x_test, y_test, prnt=False):
@@ -249,6 +306,37 @@ class HybridModel:
             print('Results of testing:')
         rmse_mf = self.test_mf(x_test, y_test, prnt)
         rmse_cs = self.test_cs(x_test, y_test, prnt)
+
+        ensemble = Ensemble(self.user_dist, self.item_dist)
+
+        results_mf_train = self.model_mf.predict(self.x_train)
+        results_cs_train = self.model_cs.predict(self.x_train)
+
+        ensemble_x_train = self.x_train + [results_mf_train, results_cs_train]
+        ensemble.fit(ensemble_x_train, self.y_train, batch_size=512,
+                                    epochs=50, validation_split=0.05, verbose=self.verbose,
+                                    callbacks=self.callbacks_cs)
+
+        # Keras fit method "unflattens" arrays on training. Undo this here
+        self.x_train[0] = self.x_train[0].flatten()
+        self.x_train[1] = self.x_train[1].flatten()
+
+        results_mf_test = self.model_mf.predict(x_test)
+        results_cs_test = self.model_cs.predict(x_test)
+        ensemble_x_test = x_test + [results_mf_test, results_cs_test]
+
+        y_pred = ensemble.predict(ensemble_x_test)
+
+        y_pred = np.maximum(0.0, y_pred)
+        y_pred = np.minimum(1.0, y_pred)
+        y_pred = self.config.transformation.invtransform(y_pred)
+
+        rmse = metrics.rmse(y_test, y_pred)
+        mae = metrics.mae(y_test, y_pred)
+        ndcg = metrics.ndcg(y_test, y_pred, 5, x_test[0])
+        if prnt:
+            print('RMSE ENS: {:.4f} \tMAE: {:.4f} \tNDCG: {:.4f}'.format(rmse, mae, ndcg))
+
         return rmse_mf, rmse_cs
 
     def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=True):

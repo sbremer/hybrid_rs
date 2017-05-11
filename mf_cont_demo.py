@@ -6,10 +6,11 @@ from math import sqrt
 np.random.seed(0)
 
 # Keras
-from keras.layers import Input, Embedding, Dense, Flatten
+from keras.layers import Input, Embedding, Dense, Flatten, Lambda, Permute
 from keras.layers.merge import Dot, Concatenate, Add, Multiply
 from keras.models import Model
 from keras.regularizers import l2
+from keras import backend as K
 
 # Local
 import util
@@ -190,9 +191,9 @@ def get_model_mf_cont_demo(n_factors, n_users_features, n_items_feature):
     return model
 
 
-def get_model_attribute_bias(n_users_features, n_items_feature):
-    lmdba = 0.00005
-    regularizer = l2(lmdba)
+def get_model_attribute_bias(n_users_features, n_items_features):
+    reg_bias = l2(0.0001)
+    reg_att = l2(0.0015)
 
     input_u = Input((1,))
     input_i = Input((1,))
@@ -200,24 +201,65 @@ def get_model_attribute_bias(n_users_features, n_items_feature):
     vec_features_u = Embedding(n_users, n_users_features, input_length=1, trainable=False, name='users_features')(input_u)
     vec_features_u = Flatten()(vec_features_u)
 
-    vec_features_i = Embedding(n_items, n_items_feature, input_length=1, trainable=False, name='items_features')(input_i)
+    vec_features_i = Embedding(n_items, n_items_features, input_length=1, trainable=False, name='items_features')(input_i)
     vec_features_i = Flatten()(vec_features_i)
 
     factors_i = Dense(n_users_features, kernel_initializer='zeros', activation='linear',
-                      kernel_regularizer=l2(0.002), use_bias=False)(vec_features_i)
-
-    # 0.002: 1.0339
+                      kernel_regularizer=reg_att, use_bias=False)(vec_features_i)
 
     mult = Multiply()([factors_i, vec_features_u])
 
-    bias_u = Embedding(n_users, 1, input_length=1, embeddings_initializer='zeros', embeddings_regularizer=regularizer)(input_u)
+    bias_u = Embedding(n_users, 1, input_length=1, embeddings_initializer='zeros', embeddings_regularizer=reg_bias)(input_u)
     bias_u = Flatten()(bias_u)
-    bias_i = Embedding(n_items, 1, input_length=1, embeddings_initializer='zeros', embeddings_regularizer=regularizer)(input_i)
+    bias_i = Embedding(n_items, 1, input_length=1, embeddings_initializer='zeros', embeddings_regularizer=reg_bias)(input_i)
     bias_i = Flatten()(bias_i)
 
     concat = Concatenate()([bias_u, bias_i, mult])
 
     mf_out = Dense(1, activation='linear')(concat)
+
+    model = Model(inputs=[input_u, input_i], outputs=mf_out)
+
+    # Compile and return model
+    model.compile(loss='mse', optimizer='nadam')
+    return model
+
+
+def get_model_attribute_ann(n_users_features, n_items_features):
+    reg_bias = l2(0.0001)
+    reg_att = l2(0.0015)
+    reg_att = l2(0.0001)
+
+    input_u = Input((1,))
+    input_i = Input((1,))
+
+    vec_features_u = Embedding(n_users, n_users_features, input_length=1, trainable=False, name='users_features')(input_u)
+    # vec_features_u = Flatten()(vec_features_u)
+
+    vec_features_i = Embedding(n_items, n_items_features, input_length=1, trainable=False, name='items_features')(input_i)
+    # vec_features_i = Flatten()(vec_features_i)
+
+    features = Concatenate()([vec_features_u, vec_features_i])
+    # features_t = K.permute_dimensions(features, (0, 2, 1))
+
+    # xfeatures = Dot((1, 2))([features, features_t])
+
+    xfeatures = Lambda(lambda x: K.batch_dot(x, K.permute_dimensions(x, (0, 2, 1)), axes=(1, 2)), output_shape=lambda s: (s[0], s[2], s[2]))(features)
+    xfeatures = Flatten()(xfeatures)
+
+    ann = Dense(1, kernel_initializer='zeros', activation='linear',
+                      kernel_regularizer=reg_att, use_bias=False)(xfeatures)
+
+    # ann = Dense(5)(ann)
+
+    bias_u = Embedding(n_users, 1, input_length=1, embeddings_initializer='zeros', embeddings_regularizer=reg_bias)(input_u)
+    bias_u = Flatten()(bias_u)
+    bias_i = Embedding(n_items, 1, input_length=1, embeddings_initializer='zeros', embeddings_regularizer=reg_bias)(input_i)
+    bias_i = Flatten()(bias_i)
+
+    concat = Concatenate()([bias_u, bias_i, ann])
+
+    mf_out = Dense(1)(concat)
 
     model = Model(inputs=[input_u, input_i], outputs=mf_out)
 
@@ -389,8 +431,8 @@ models.append(('Bias', model_bias))
 # models.append(('BK_I', model_bias_item))
 
 # Ann
-model_annf = get_model_ann(users_features_norm_sqrt, items_features_norm_sqrt)
-models.append(('ANNF', model_annf))
+# model_annf = get_model_ann(users_features_norm_sqrt, items_features_norm_sqrt)
+# models.append(('ANNF', model_annf))
 
 # MF CD
 # model_mfcd = get_model_mf_cont_demo(20, n_users_features, n_items_features)
@@ -403,6 +445,12 @@ model_buia = get_model_attribute_bias(n_users_features, n_items_features)
 model_buia.get_layer('users_features').set_weights([users_features])
 model_buia.get_layer('items_features').set_weights([items_features_norm])
 models.append(('BUIA', model_buia))
+
+# Attribute ANN
+model_aann = get_model_attribute_ann(n_users_features, n_items_features)
+model_aann.get_layer('users_features').set_weights([users_features])
+model_aann.get_layer('items_features').set_weights([items_features_norm])
+models.append(('AANN', model_aann))
 
 # MF Implicit
 # model_mfim = get_model_mf_implicit(20, implicit_norm)
@@ -419,7 +467,7 @@ models.append(('BUIA', model_buia))
 callbacks = [util.EarlyStoppingBestVal('val_loss', patience=10, min_delta=0.00001)]
 
 for description, model in models:
-    model.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
+    model.fit([inds_u_train, inds_i_train], y_train, batch_size=512, epochs=100,
                        validation_split=0.1, verbose=2, callbacks=callbacks)
 
 
