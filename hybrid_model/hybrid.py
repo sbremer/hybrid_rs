@@ -1,4 +1,4 @@
-from typing import NewType, NamedTuple, List
+from typing import NewType, NamedTuple, List, Type
 import numpy as np
 import copy
 
@@ -11,9 +11,8 @@ from keras.optimizers import Optimizer
 # Local
 from hybrid_model.models import SVDpp, AttributeBias, Ensemble
 from hybrid_model.callbacks_custom import EarlyStoppingBestVal
-from hybrid_model.index_sampler import IndexSamplerTest as IndexSampler
-# from hybrid_model.index_sampler import IndexSampler
-from hybrid_model import metrics
+from hybrid_model.index_sampler import IndexSampler
+from hybrid_model import evaluation
 from hybrid_model.transform import Transformation
 
 Matrix = NewType('Matrix', np.ndarray)
@@ -45,8 +44,7 @@ class HybridConfig(NamedTuple):
     val_split_init: float
     val_split_xtrain: float
 
-    xtrain_fsize_mf: float
-    xtrain_fsize_cs: float
+    index_sampler: Type[IndexSampler]
 
     xtrain_patience: int
     xtrain_max_epochs: int
@@ -101,7 +99,7 @@ class HybridModel:
         self.item_dist = np.bincount(x_train[1], minlength=self.n_items)
 
         # Init Index Sampler
-        self.index_sampler = IndexSampler(self.user_dist, self.item_dist, self.x_train)
+        self.index_sampler = self.config.index_sampler(self.user_dist, self.item_dist, self.x_train)
 
         # Set initial global bias value to mean of training data
         mean = np.mean(y_train).astype(np.float32)
@@ -196,16 +194,16 @@ class HybridModel:
             print('Training step {}'.format(i + 1))
 
             # CS step (MF -> CS, train coldstart model with augmented data by matrix factorization model)
-            self._step_cs(self.config.xtrain_fsize_cs)
+            self._step_cs()
 
             # MF step (CS -> MF, train matrix factorization model with augmented data by coldstart model)
             # Cross training is subject to early stopping depending on the MF model validation loss
-            vloss_mf = self._step_mf(self.config.xtrain_fsize_mf)
+            vloss_mf = self._step_mf()
 
             # Performance measure through test data
             if x_test:
                 print('Results after training step {}:'.format(i + 1))
-                rmse_mf, rmse_cs = self.test(x_test, y_test, True)
+                result = self.test(x_test, y_test, True)
 
             # Check for early stopping
             if vloss_mf < vloss_mf_min - min_delta:
@@ -230,11 +228,9 @@ class HybridModel:
         # self.model_mf.model.set_weights(best_weights_mf)
         # self.model_cs.model.set_weights(best_weights_cs)
 
-    def _step_mf(self, f_xsize):
-        n_xtrain = int(self.n_train * f_xsize)
-
+    def _step_mf(self):
         # Get indices for cross training from sampling distribution
-        inds_u_x, inds_i_x = self.index_sampler.get_indices_from_cs(n_xtrain)
+        inds_u_x, inds_i_x = self.index_sampler.get_indices_from_cs()
 
         # Get prediction on sampled indices
         y_x = self.model_cs.predict([inds_u_x, inds_i_x])
@@ -253,11 +249,9 @@ class HybridModel:
         # Return best validation loss
         return min(history.history['val_loss'])
 
-    def _step_cs(self, f_xsize):
-        n_xtrain = int(self.n_train * f_xsize)
-
+    def _step_cs(self):
         # Get indices for cross training from sampling distribution
-        inds_u_x, inds_i_x = self.index_sampler.get_indices_from_mf(n_xtrain)
+        inds_u_x, inds_i_x = self.index_sampler.get_indices_from_mf()
 
         # Get prediction on sampled indices
         y_x = self.model_mf.predict([inds_u_x, inds_i_x])
@@ -273,81 +267,124 @@ class HybridModel:
         # Return best validation loss
         return min(history.history['val_loss'])
 
-    def test_mf(self, x, y, prnt=False):
-        y_pred = self.model_mf.predict(x)
+    def test_mf(self, x_test, y_test, prnt=False):
+        y_pred = self.model_mf.predict(x_test)
 
         y_pred = np.maximum(0.0, y_pred)
         y_pred = np.minimum(1.0, y_pred)
         y_pred = self.config.transformation.invtransform(y_pred)
 
-        rmse = metrics.rmse(y, y_pred)
-        mae = metrics.mae(y, y_pred)
-        ndcg = metrics.ndcg(y, y_pred, 5, x[0])
-        if prnt:
-            print('RMSE MF: {:.4f} \tMAE: {:.4f} \tNDCG: {:.4f}'.format(rmse, mae, ndcg))
-        return rmse
+        result = evaluation.EvaluationResultModel()
+        for metric, fun_metric in evaluation.metrics.items():
+            result.results[metric] = fun_metric(y_test, y_pred, x_test)
 
-    def test_cs(self, x, y, prnt=False):
-        y_pred = self.model_cs.predict(x)
+        if prnt:
+            print('MF: ', result)
+
+        return result
+
+    def test_cs(self, x_test, y_test, prnt=False):
+        y_pred = self.model_cs.predict(x_test)
 
         y_pred = np.maximum(0.0, y_pred)
         y_pred = np.minimum(1.0, y_pred)
         y_pred = self.config.transformation.invtransform(y_pred)
 
-        rmse = metrics.rmse(y, y_pred)
-        mae = metrics.mae(y, y_pred)
-        ndcg = metrics.ndcg(y, y_pred, 5, x[0])
+        result = evaluation.EvaluationResultModel()
+        for metric, fun_metric in evaluation.metrics.items():
+            result.results[metric] = fun_metric(y_test, y_pred, x_test)
+
         if prnt:
-            print('RMSE ANN: {:.4f} \tMAE: {:.4f} \tNDCG: {:.4f}'.format(rmse, mae, ndcg))
-        return rmse
+            print('CS: ', result)
+
+        return result
+
+    # def test_ensemble(self, x_test, y_test):
+    #     ensemble = Ensemble(self.user_dist, self.item_dist)
+    #
+    #     results_mf_train = self.model_mf.predict(self.x_train)
+    #     results_cs_train = self.model_cs.predict(self.x_train)
+    #
+    #     ensemble_x_train = self.x_train + [results_mf_train, results_cs_train]
+    #     ensemble.fit(ensemble_x_train, self.y_train, batch_size=512,
+    #                  epochs=50, validation_split=0.05, verbose=self.verbose,
+    #                  callbacks=self.callbacks_cs)
+    #
+    #     # Keras fit method "unflattens" arrays on training. Undo this here
+    #     self.x_train[0] = self.x_train[0].flatten()
+    #     self.x_train[1] = self.x_train[1].flatten()
+    #
+    #     results_mf_test = self.model_mf.predict(x_test)
+    #     results_cs_test = self.model_cs.predict(x_test)
+    #     ensemble_x_test = x_test + [results_mf_test, results_cs_test]
+    #
+    #     y_pred = ensemble.predict(ensemble_x_test)
+    #
+    #     y_pred = np.maximum(0.0, y_pred)
+    #     y_pred = np.minimum(1.0, y_pred)
+    #     y_pred = self.config.transformation.invtransform(y_pred)
+    #
+    #     rmse = evaluation_metrics.rmse(y_test, y_pred)
+    #     mae = evaluation_metrics.mae(y_test, y_pred)
+    #     ndcg = evaluation_metrics.ndcg(y_test, y_pred, 5, x_test[0])
+    #
+    #     print('RMSE ENS: {:.4f} \tMAE: {:.4f} \tNDCG: {:.4f}'.format(rmse, mae, ndcg))
 
     def test(self, x_test, y_test, prnt=False):
+        result = evaluation.EvaluationResultPart()
+
         if prnt:
             print('Results of testing:')
-        rmse_mf = self.test_mf(x_test, y_test, prnt)
-        rmse_cs = self.test_cs(x_test, y_test, prnt)
+        result.model_mf = self.test_mf(x_test, y_test, prnt)
+        result.model_cs = self.test_cs(x_test, y_test, prnt)
 
-        ensemble = Ensemble(self.user_dist, self.item_dist)
+        return result
 
-        results_mf_train = self.model_mf.predict(self.x_train)
-        results_cs_train = self.model_cs.predict(self.x_train)
+    def evaluate(self, x_test, y_test) -> evaluation.EvaluationResult:
+        result = evaluation.EvaluationResult()
 
-        ensemble_x_train = self.x_train + [results_mf_train, results_cs_train]
-        ensemble.fit(ensemble_x_train, self.y_train, batch_size=512,
-                                    epochs=50, validation_split=0.05, verbose=self.verbose,
-                                    callbacks=self.callbacks_cs)
+        for part, fun_parting in evaluation.parts.items():
+            x_test_part, y_test_part = fun_parting(x_test, y_test)
+            result_part = self.evaluate_part(x_test_part, y_test_part)
+            result.parts[part] = result_part
 
-        # Keras fit method "unflattens" arrays on training. Undo this here
-        self.x_train[0] = self.x_train[0].flatten()
-        self.x_train[1] = self.x_train[1].flatten()
+        return result
 
-        results_mf_test = self.model_mf.predict(x_test)
-        results_cs_test = self.model_cs.predict(x_test)
-        ensemble_x_test = x_test + [results_mf_test, results_cs_test]
+    def evaluate_part(self, x_test, y_test) -> evaluation.EvaluationResultPart:
+        result = evaluation.EvaluationResultPart()
 
-        y_pred = ensemble.predict(ensemble_x_test)
+        # Evaluation of MF
+        result.model_mf = self.evaluate_model(self.model_mf, x_test, y_test)
+
+        # Evaluation of CS
+        result.model_cs = self.evaluate_model(self.model_cs, x_test, y_test)
+
+        return result
+
+    def evaluate_model(self, model, x_test, y_test) -> evaluation.EvaluationResultModel:
+        result = evaluation.EvaluationResultModel()
+        y_pred = model.predict(x_test)
 
         y_pred = np.maximum(0.0, y_pred)
         y_pred = np.minimum(1.0, y_pred)
         y_pred = self.config.transformation.invtransform(y_pred)
 
-        rmse = metrics.rmse(y_test, y_pred)
-        mae = metrics.mae(y_test, y_pred)
-        ndcg = metrics.ndcg(y_test, y_pred, 5, x_test[0])
-        if prnt:
-            print('RMSE ENS: {:.4f} \tMAE: {:.4f} \tNDCG: {:.4f}'.format(rmse, mae, ndcg))
+        for metric, fun_metric in evaluation.metrics.items():
+            result.results[metric] = fun_metric(y_test, y_pred, x_test)
 
-        return rmse_mf, rmse_cs
+        return result
 
     def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=True):
 
-        order = np.arange(self.n_train + len(y_x))
+        inds_u_xtrain = np.concatenate((inds_u_x, self.x_train[0]))
+        inds_i_xtrain = np.concatenate((inds_i_x, self.x_train[1]))
+        y_xtrain = np.concatenate((y_x, self.y_train))
 
         if shuffle:
+            order = np.arange(self.n_train + len(y_x))
             np.random.shuffle(order)
-
-        inds_u_xtrain = np.concatenate((inds_u_x, self.x_train[0]))[order]
-        inds_i_xtrain = np.concatenate((inds_i_x, self.x_train[1]))[order]
-        y_xtrain = np.concatenate((y_x, self.y_train))[order]
+            inds_u_xtrain = inds_u_xtrain[order]
+            inds_i_xtrain = inds_i_xtrain[order]
+            y_xtrain = y_xtrain[order]
 
         return inds_u_xtrain, inds_i_xtrain, y_xtrain

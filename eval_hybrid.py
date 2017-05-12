@@ -6,6 +6,7 @@ np.random.seed(0)
 # Local imports
 from hybrid_model.hybrid import HybridModel, HybridConfig
 from hybrid_model import transform
+from hybrid_model.index_sampler import IndexSampler2, IndexSamplerUserbased
 import util
 
 (inds_u, inds_i, y, users_features, items_features) = pickle.load(open('data/ml100k.pickle', 'rb'))
@@ -17,10 +18,10 @@ n_items, n_items_features = items_features.shape
 
 # Crossvalidation
 n_fold = 5
-user_coldstart = True
+user_coldstart = False
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)
-    # kfold = util.kfold_entries_plus(n_fold, inds_u, 3)
+    # kfold = util.kfold_entries_plus(n_fold, inds_u, 2)
 else:
     kfold = util.kfold(n_fold, inds_u)
 
@@ -61,11 +62,10 @@ hybrid_config = HybridConfig(
     batch_size_xtrain_cs=1024,
     val_split_init=0.05,
     val_split_xtrain=0.05,
-    xtrain_fsize_mf=0.2,
-    xtrain_fsize_cs=0.15,
+    index_sampler=IndexSamplerUserbased,
     xtrain_patience=5,
     xtrain_max_epochs=10,
-    xtrain_data_shuffle=True,
+    xtrain_data_shuffle=False,
     transformation=transform.TransformationLinear
 )
 
@@ -92,4 +92,4 @@ if test_while_fit:
 else:
     model.fit([inds_u_train, inds_i_train], y_train)
 
-    rmse_mf, rmse_cs = model.test([inds_u_test, inds_i_test], y_test, True)
+    result = model.test([inds_u_test, inds_i_test], y_test, True)
