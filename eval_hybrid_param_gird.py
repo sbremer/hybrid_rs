@@ -5,6 +5,9 @@ np.random.seed(1)
 
 # Local imports
 from hybrid_model.hybrid import HybridModel, HybridConfig
+from hybrid_model import transform
+from hybrid_model.index_sampler import IndexSamplerUserbased
+from hybrid_model.evaluation import EvaluationResults
 import util
 
 (inds_u, inds_i, y, users_features, items_features) = pickle.load(open('data/ml100k.pickle', 'rb'))
@@ -14,12 +17,9 @@ n_items, n_items_features = items_features.shape
 
 # items_features_norm = items_features / np.maximum(1, np.sum(items_features, axis=1)[:, None])
 
-# Rescale ratings to ~(0.0, 1.0)
-y = (y - 0.5) * 0.2
-
 # Crossvalidation
-n_fold = 5
-user_coldstart = True
+n_fold = 2
+user_coldstart = False
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)
     # kfold = util.kfold_entries_plus(n_fold, inds_u, 3)
@@ -47,11 +47,11 @@ param_grid_setup = dict(n_factors=[40],
     batch_size_xtrain_cs=[1024],
     val_split_init=[0.05],
     val_split_xtrain=[0.05],
-    xtrain_fsize_mf=[0.2],
-    xtrain_fsize_cs=[0.15],
+    index_sampler=[IndexSamplerUserbased],
     xtrain_patience=[5],
     xtrain_max_epochs=[10],
-    xtrain_data_shuffle=[True]
+    xtrain_data_shuffle=[False],
+    transformation=[transform.TransformationLinear]
 )
 
 param_grid = list(ParameterGrid(param_grid_setup))
@@ -67,9 +67,7 @@ for i, config in enumerate(param_grid):
 
     print('Now testing config {}: {}'.format(i, hybrid_config))
 
-    # Init xval
-    rmses_mf = []
-    rmses_cs = []
+    results = EvaluationResults()
 
     for xval_train, xval_test in kfold:
         # Dataset training
@@ -88,17 +86,14 @@ for i, config in enumerate(param_grid):
 
         model.fit([inds_u_train, inds_i_train], y_train)
 
-        rmse_mf, rmse_cs = model.test([inds_u_test, inds_i_test], y_test, True)
+        result = model.evaluate([inds_u_test, inds_i_test], y_test)
+        print(result)
+        results.add(result)
 
-        rmses_mf.append(rmse_mf)
-        rmses_cs.append(rmse_cs)
+    rmses_mf_grid[i] = results.mean_rmse_mf()
+    rmses_cs_grid[i] = results.mean_rmse_cs()
 
-    rmse_mf = np.mean(rmses_mf)
-    rmse_cs = np.mean(rmses_cs)
-    rmses_mf_grid[i] = rmse_mf
-    rmses_cs_grid[i] = rmse_cs
-
-    print('Config {}: MF {:.4f}  CS {:.4f}'.format(i, rmse_mf, rmse_cs))
+    print('Config {}: '.format(i), results)
 
 i_mf_best = np.argmin(rmses_mf_grid)
 i_cs_best = np.argmin(rmses_cs_grid)
