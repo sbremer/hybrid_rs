@@ -18,7 +18,7 @@ n_items, n_items_features = items_features.shape
 # items_features_norm = items_features / np.maximum(1, np.sum(items_features, axis=1)[:, None])
 
 # Crossvalidation
-n_fold = 2
+n_fold = 5
 user_coldstart = False
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)

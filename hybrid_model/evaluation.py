@@ -24,6 +24,7 @@ class EvaluationResult:
             s += '=== Part {}\n'.format(part)
             s += str(result)
             s += '\n'
+
         return s
 
 
@@ -33,7 +34,7 @@ class EvaluationResultPart:
         self.model_cs: EvaluationResultModel = EvaluationResultModel()
 
     def __str__(self):
-        return str(self.model_mf) + '\n' + str(self.model_cs)
+        return 'MF: ' + str(self.model_mf) + '\r\nCS: ' + str(self.model_cs)
 
 
 class EvaluationResultModel:
@@ -51,18 +52,20 @@ class EvaluationResultModel:
 # === Multiple Evaluation Results (from Folds)
 class EvaluationResults:
     def __init__(self):
-        self.parts: Dict[str, EvaluationResultsPart] = dict((key, EvaluationResultsPart) for key in parts.keys())
+        self.parts: Dict[str, EvaluationResultsPart] = dict((key, EvaluationResultsPart()) for key in parts.keys())
 
     def add(self, result: EvaluationResult):
         for part in parts.keys():
             self.parts[part].add(result.parts[part])
 
     def __str__(self):
-        s = ''
+        s = 'Combined Results: \r\n'
         for part, result in self.parts.items():
             s += '=== Part {}\n'.format(part)
             s += str(result)
             s += '\n'
+
+        return s
 
     def mean_rmse_mf(self):
         """
@@ -85,7 +88,7 @@ class EvaluationResultsPart:
         self.model_cs: EvaluationResultsModel = EvaluationResultsModel()
 
     def __str__(self):
-        return str(self.model_mf) + '\n' + str(self.model_cs)
+        return 'MF: ' + str(self.model_mf) + '\r\nCS: ' + str(self.model_cs)
 
     def add(self, result: EvaluationResultPart):
         self.model_mf.add(result.model_mf)
