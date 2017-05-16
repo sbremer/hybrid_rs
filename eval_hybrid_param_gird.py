@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-np.random.seed(1)
+np.random.seed(0)
 
 # Local imports
 from hybrid_model.hybrid import HybridModel, HybridConfig
@@ -19,7 +19,7 @@ n_items, n_items_features = items_features.shape
 
 # Crossvalidation
 n_fold = 5
-user_coldstart = False
+user_coldstart = True
 if user_coldstart:
     kfold = util.kfold_entries(n_fold, inds_u)
     # kfold = util.kfold_entries_plus(n_fold, inds_u, 3)
@@ -67,7 +67,8 @@ for i, config in enumerate(param_grid):
 
     print('Now testing config {}: {}'.format(i, hybrid_config))
 
-    results = EvaluationResults()
+    results_before_xtrain = EvaluationResults()
+    results_after_xtrain = EvaluationResults()
 
     for xval_train, xval_test in kfold:
         # Dataset training
@@ -84,16 +85,21 @@ for i, config in enumerate(param_grid):
         # Create model
         model = HybridModel(users_features, items_features, hybrid_config, verbose=0)
 
-        model.fit([inds_u_train, inds_i_train], y_train)
+        model.fit_init_only([inds_u_train, inds_i_train], y_train)
+        result_before_xtrain = model.evaluate([inds_u_test, inds_i_test], y_test)
 
-        result = model.evaluate([inds_u_test, inds_i_test], y_test)
-        print(result)
-        results.add(result)
+        model.fit_xtrain_only([inds_u_train, inds_i_train], y_train)
+        result_after_xtrain = model.evaluate([inds_u_test, inds_i_test], y_test)
 
-    rmses_mf_grid[i] = results.mean_rmse_mf()
-    rmses_cs_grid[i] = results.mean_rmse_cs()
+        print(result_after_xtrain)
+        results_before_xtrain.add(result_before_xtrain)
+        results_after_xtrain.add(result_after_xtrain)
 
-    print('Config {}: '.format(i), results)
+    rmses_mf_grid[i] = results_after_xtrain.mean_rmse_mf()
+    rmses_cs_grid[i] = results_after_xtrain.mean_rmse_cs()
+
+    print('Config before_xtrain {}: '.format(i), results_before_xtrain)
+    print('Config after_xtrain {}: '.format(i), results_after_xtrain)
 
 i_mf_best = np.argmin(rmses_mf_grid)
 i_cs_best = np.argmin(rmses_cs_grid)

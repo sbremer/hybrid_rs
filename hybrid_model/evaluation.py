@@ -8,6 +8,10 @@ from hybrid_model import evaluation_metrics
 # Static stuff
 parts = {'full': evaluation_parting.full}
 
+n_bins = 10
+parts.update({'user_{}'.format(i+1): evaluation_parting.binning_user(n_bins, i) for i in range(n_bins)})
+parts.update({'item_{}'.format(i+1): evaluation_parting.binning_item(n_bins, i) for i in range(n_bins)})
+
 metrics = {'rmse': evaluation_metrics.Rmse().calculate,
            'mae': evaluation_metrics.Mae().calculate,
            'ndcg@5': evaluation_metrics.Ndcg(5).calculate}

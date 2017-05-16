@@ -88,6 +88,10 @@ class HybridModel:
 
     def fit(self, x_train, y_train, x_test=None, y_test=None):
 
+        self.fit_init_only(x_train, y_train, x_test, y_test)
+        self.fit_xtrain_only(x_train, y_train, x_test, y_test)
+
+    def fit_init_only(self, x_train, y_train, x_test=None, y_test=None):
         y_train = self.config.transformation.transform(y_train)
 
         self.x_train = x_train
@@ -113,40 +117,7 @@ class HybridModel:
         # Initially train models separately
         self._train_init(x_test, y_test)
 
-        # Recompile model using optimizer for cross training
-        self.model_mf.compile(self.config.opt_mf_xtrain)
-        self.model_cs.compile(self.config.opt_cs_xtrain)
-
-        # Run Cross-Training
-        self._train_xtrain(x_test, y_test)
-
-    def fit_test(self, x_train, y_train, x_test=None, y_test=None):
-
-        y_train = self.config.transformation.transform(y_train)
-
-        self.x_train = x_train
-        self.y_train = y_train
-        self.n_train = len(y_train)
-
-        # Get distribution of ratings per user and item
-        self.user_dist = np.bincount(x_train[0], minlength=self.n_users)
-        self.item_dist = np.bincount(x_train[1], minlength=self.n_items)
-
-        # Init Index Sampler
-        self.index_sampler = IndexSampler(self.user_dist, self.item_dist, self.x_train)
-
-        # Set initial global bias value to mean of training data
-        mean = np.mean(y_train)
-        self.model_mf.model.get_layer('bias').set_weights([mean])
-        self.model_cs.model.get_layer('bias').set_weights([mean])
-
-        # Compile model using optimizer used for initial training
-        self.model_mf.compile(self.config.opt_mf_init)
-        self.model_cs.compile(self.config.opt_cs_init)
-
-        # Initially train models separately
-        self._train_init(x_test, y_test)
-
+    def fit_xtrain_only(self, x_train, y_train, x_test=None, y_test=None):
         # Recompile model using optimizer for cross training
         self.model_mf.compile(self.config.opt_mf_xtrain)
         self.model_cs.compile(self.config.opt_cs_xtrain)
@@ -299,36 +270,46 @@ class HybridModel:
 
         return result
 
-    # def test_ensemble(self, x_test, y_test):
-    #     ensemble = Ensemble(self.user_dist, self.item_dist)
-    #
-    #     results_mf_train = self.model_mf.predict(self.x_train)
-    #     results_cs_train = self.model_cs.predict(self.x_train)
-    #
-    #     ensemble_x_train = self.x_train + [results_mf_train, results_cs_train]
-    #     ensemble.fit(ensemble_x_train, self.y_train, batch_size=512,
-    #                  epochs=50, validation_split=0.05, verbose=self.verbose,
-    #                  callbacks=self.callbacks_cs)
-    #
-    #     # Keras fit method "unflattens" arrays on training. Undo this here
-    #     self.x_train[0] = self.x_train[0].flatten()
-    #     self.x_train[1] = self.x_train[1].flatten()
-    #
-    #     results_mf_test = self.model_mf.predict(x_test)
-    #     results_cs_test = self.model_cs.predict(x_test)
-    #     ensemble_x_test = x_test + [results_mf_test, results_cs_test]
-    #
-    #     y_pred = ensemble.predict(ensemble_x_test)
-    #
-    #     y_pred = np.maximum(0.0, y_pred)
-    #     y_pred = np.minimum(1.0, y_pred)
-    #     y_pred = self.config.transformation.invtransform(y_pred)
-    #
-    #     rmse = evaluation_metrics.rmse(y_test, y_pred)
-    #     mae = evaluation_metrics.mae(y_test, y_pred)
-    #     ndcg = evaluation_metrics.ndcg(y_test, y_pred, 5, x_test[0])
-    #
-    #     print('RMSE ENS: {:.4f} \tMAE: {:.4f} \tNDCG: {:.4f}'.format(rmse, mae, ndcg))
+    def test_ensemble(self, x_test, y_test):
+        ensemble = Ensemble(self.user_dist, self.item_dist)
+
+        inds_u_x, inds_i_x = self.index_sampler.get_indices_from_cs()
+
+        inds_u_xtrain = np.concatenate((inds_u_x, self.x_train[0]))
+        inds_i_xtrain = np.concatenate((inds_i_x, self.x_train[1]))
+
+        x_train = [inds_u_xtrain, inds_i_xtrain]
+
+        results_mf_train = self.model_mf.predict(x_train)
+        results_cs_train = self.model_cs.predict(x_train)
+
+        y_train = np.concatenate((results_cs_train[:len(inds_u_x)], self.y_train))
+
+        ensemble_x_train = x_train + [results_mf_train, results_cs_train]
+        ensemble.fit(ensemble_x_train, y_train, batch_size=512,
+                     epochs=50, validation_split=0.05, verbose=self.verbose,
+                     callbacks=self.callbacks_cs)
+
+        # Keras fit method "unflattens" arrays on training. Undo this here
+        self.x_train[0] = self.x_train[0].flatten()
+        self.x_train[1] = self.x_train[1].flatten()
+
+        results_mf_test = self.model_mf.predict(x_test)
+        results_cs_test = self.model_cs.predict(x_test)
+        ensemble_x_test = x_test + [results_mf_test, results_cs_test]
+
+        y_pred = ensemble.predict(ensemble_x_test)
+
+        result = evaluation.EvaluationResultModel()
+
+        y_pred = np.maximum(0.0, y_pred)
+        y_pred = np.minimum(1.0, y_pred)
+        y_pred = self.config.transformation.invtransform(y_pred)
+
+        for metric, fun_metric in evaluation.metrics.items():
+            result.results[metric] = fun_metric(y_test, y_pred, x_test)
+
+        print('Ensemble: {}'.format(result))
 
     def test(self, x_test, y_test, prnt=False):
         result = evaluation.EvaluationResultPart()
@@ -344,7 +325,7 @@ class HybridModel:
         result = evaluation.EvaluationResult()
 
         for part, fun_parting in evaluation.parts.items():
-            x_test_part, y_test_part = fun_parting(x_test, y_test)
+            x_test_part, y_test_part = fun_parting(x_test, y_test, self.user_dist, self.item_dist)
             result_part = self.evaluate_part(x_test_part, y_test_part)
             result.parts[part] = result_part
 

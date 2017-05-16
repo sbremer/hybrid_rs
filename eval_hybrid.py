@@ -82,7 +82,7 @@ hybrid_config = HybridConfig(
 # RMSE MF: 0.9087 	MAE: 0.7093 	NDCG: 0.5156
 # RMSE ANN: 0.9442 	MAE: 0.7385 	NDCG: 0.4837
 
-test_while_fit = True
+test_while_fit = False
 
 # Create model
 model = HybridModel(users_features, items_features, hybrid_config, verbose=0)
@@ -90,6 +90,14 @@ model = HybridModel(users_features, items_features, hybrid_config, verbose=0)
 if test_while_fit:
     model.fit([inds_u_train, inds_i_train], y_train, [inds_u_test, inds_i_test], y_test)
 else:
-    model.fit([inds_u_train, inds_i_train], y_train)
+    model.fit_init_only([inds_u_train, inds_i_train], y_train)
 
-    result = model.test([inds_u_test, inds_i_test], y_test, True)
+    print('Before xtrain:')
+    result = model.evaluate([inds_u_test, inds_i_test], y_test)
+    print(result)
+
+    model.fit_xtrain_only([inds_u_train, inds_i_train], y_train)
+
+    print('After xtrain:')
+    result = model.evaluate([inds_u_test, inds_i_test], y_test)
+    print(result)
