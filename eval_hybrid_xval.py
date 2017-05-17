@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-np.random.seed(1)
+np.random.seed(0)
 
 # Local imports
 from hybrid_model.hybrid import HybridModel, HybridConfig
@@ -18,10 +18,10 @@ n_items, n_items_features = items_features.shape
 
 # Crossvalidation
 n_fold = 5
-user_coldstart = True
+user_coldstart = False
 if user_coldstart:
-    # kfold = util.kfold_entries(n_fold, inds_u)
-    kfold = util.kfold_entries_plus(n_fold, inds_u, 2)
+    kfold = util.kfold_entries(n_fold, inds_u)
+    # kfold = util.kfold_entries_plus(n_fold, inds_u, 34)
 else:
     kfold = util.kfold(n_fold, inds_u)
 

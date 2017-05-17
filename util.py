@@ -37,14 +37,14 @@ def kfold_entries_plus(k, entries, plus):
         for test_key in test.keys():
             for _ in range(plus):
                 n = len(test[test_key])
-                if n == 0:
+                if n <= 1:
                     break
                 i = np.random.randint(n - 1)
                 element = test[test_key].pop(i)
                 plus_list.append(element)
 
-        train_indices = list(itertools.chain(plus_list, *train.values()))
-        test_indices = list(itertools.chain(*test.values()))
+        train_indices = np.array(list(itertools.chain(plus_list, *train.values())))
+        test_indices = np.array(list(itertools.chain(*test.values())))
 
         yield train_indices, test_indices
 
