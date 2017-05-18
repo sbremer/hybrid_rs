@@ -41,7 +41,7 @@ for ratings_per_user in range(0, 61, 5):
             implicit_thresh_init=0.7,
             implicit_thresh_xtrain=0.8,
             opt_mf_init='adadelta',
-            opt_cs_init='adadelta',
+            opt_cs_init='nadam',
             opt_mf_xtrain='adadelta',
             opt_cs_xtrain='adadelta',
             batch_size_init_mf=512,
