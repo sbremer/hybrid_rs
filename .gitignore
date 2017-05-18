@@ -101,3 +101,6 @@ data/
 
 # Spark folder
 spark-warehouse/
+
+# plots
+plots/
