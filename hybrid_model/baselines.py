@@ -16,7 +16,9 @@ bias_init = Constant(0.5)
 
 
 class BaselineBias(AbstractKerasModel):
-    def __init__(self, n_users, n_items):
+    def __init__(self, n_users, n_items, transformation=None):
+        if transformation:
+            self.transformation = transformation
 
         lmdba = 0.00005
         regularizer = l2(lmdba)
@@ -91,14 +93,14 @@ class BiasEstimator:
 
 
 class BaselineSVD(AbstractKerasModel):
-    def __init__(self, n_users, n_items, n_factors=40, reg_latent=0.00004, reg_bias=0.00005, implicit_thresh=0.7):
+    def __init__(self, n_users, n_items, n_factors=40, reg_latent=0.00004, reg_bias=0.00005, transformation=None):
+        if transformation:
+            self.transformation = transformation
 
         self.n_users = n_users
         self.n_items = n_items
 
         self.implicit = np.zeros((self.n_users, self.n_items))
-
-        self.implicit_thresh = implicit_thresh
 
         input_u = Input((1,))
         input_i = Input((1,))
@@ -127,7 +129,9 @@ class BaselineSVD(AbstractKerasModel):
 
 
 class BaselineSVDpp(AbstractKerasModel):
-    def __init__(self, n_users, n_items, n_factors=40, reg_latent=0.00004, reg_bias=0.00005, implicit_thresh=0.7):
+    def __init__(self, n_users, n_items, n_factors=40, reg_latent=0.00004, reg_bias=0.00005, implicit_thresh=0.7, transformation=None):
+        if transformation:
+            self.transformation = transformation
 
         self.n_users = n_users
         self.n_items = n_items

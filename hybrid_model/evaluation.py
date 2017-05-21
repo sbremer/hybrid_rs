@@ -12,9 +12,11 @@ parts = {'full': evaluation_parting.full}
 # parts.update({'user_{}'.format(i+1): evaluation_parting.binning_user(n_bins, i) for i in range(n_bins)})
 # parts.update({'item_{}'.format(i+1): evaluation_parting.binning_item(n_bins, i) for i in range(n_bins)})
 
-metrics = {'rmse': evaluation_metrics.Rmse().calculate,
-           'mae': evaluation_metrics.Mae().calculate,
-           'ndcg@5': evaluation_metrics.Ndcg(5).calculate}
+# metrics = {'rmse': evaluation_metrics.Rmse().calculate,
+#            'mae': evaluation_metrics.Mae().calculate,
+#            'ndcg@5': evaluation_metrics.Ndcg(5).calculate}
+
+metrics = {'rmse': evaluation_metrics.Rmse().calculate}
 
 
 # === Single Evaluation Results
@@ -115,3 +117,6 @@ class EvaluationResultsModel:
     def add(self, result: EvaluationResultModel):
         for metric in metrics.keys():
             self.results[metric].append(result.results[metric])
+
+    def mean(self, metric):
+        return np.mean(self.results[metric])

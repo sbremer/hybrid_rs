@@ -7,14 +7,19 @@ import numpy as np
 from hybrid_model.hybrid import HybridModel, HybridConfig
 from hybrid_model import transform
 from hybrid_model.index_sampler import IndexSampler2, IndexSamplerUserbased
-from hybrid_model.evaluation import EvaluationResults
+from hybrid_model.evaluation import EvaluationResults, EvaluationResultsModel
 from hybrid_model.evaluation_parting import stats_user, stats_item
 import util
+
+from hybrid_model.baselines import BaselineSVD
+from hybrid_model.callbacks_custom import EarlyStoppingBestVal
 
 (inds_u, inds_i, y, users_features, items_features) = pickle.load(open('data/ml100k.pickle', 'rb'))
 
 n_users, n_users_features = users_features.shape
 n_items, n_items_features = items_features.shape
+
+callbacks = [EarlyStoppingBestVal('val_loss', patience=10)]
 
 n_fold = 5
 rep_xval = 3
@@ -22,10 +27,13 @@ rep_xval = 3
 x = []
 y_mf = []
 y_cs = []
+y_mf_baseline = []
 
 for ratings_per_user in range(0, 61, 5):
 
     results_before_xtrain = EvaluationResults()
+
+    results_mf = EvaluationResultsModel()
 
     for _ in range(rep_xval):
 
@@ -40,7 +48,7 @@ for ratings_per_user in range(0, 61, 5):
             reg_att_bias=0.0015,
             implicit_thresh_init=0.7,
             implicit_thresh_xtrain=0.8,
-            opt_mf_init='adadelta',
+            opt_mf_init='nadam',
             opt_cs_init='nadam',
             opt_mf_xtrain='adadelta',
             opt_cs_xtrain='adadelta',
@@ -69,22 +77,36 @@ for ratings_per_user in range(0, 61, 5):
             inds_i_test = inds_i[xval_test]
             y_test = y[xval_test]
 
+            model = BaselineSVD(n_users, n_items, transformation=transform.TransformationLinear())
+
+            model.fit([inds_u_train, inds_i_train], y_train, batch_size=512, epochs=200,
+                          validation_split=0.05, verbose=0, callbacks=callbacks)
+
+            result_mf = model.evaluate([inds_u_test, inds_i_test], y_test)
+            results_mf.add(result_mf)
+
             # Create model
-            model = HybridModel(users_features, items_features, hybrid_config, verbose=0)
+            # model = HybridModel(users_features, items_features, hybrid_config, verbose=0)
+            #
+            # model.fit_init_only([inds_u_train, inds_i_train], y_train)
+            # model.fit_xtrain_only([inds_u_train, inds_i_train], y_train)
+            # result = model.evaluate([inds_u_test, inds_i_test], y_test)
+            #
+            # results_before_xtrain.add(result)
 
-            model.fit_init_only([inds_u_train, inds_i_train], y_train)
-            result_before_xtrain = model.evaluate([inds_u_test, inds_i_test], y_test)
+    # rmse_mf = results_before_xtrain.mean_rmse_mf()
+    # rmse_cs = results_before_xtrain.mean_rmse_cs()
+    # print('For {} ratings: MF {}  CS {}'.format(ratings_per_user, rmse_mf, rmse_cs))
 
-            results_before_xtrain.add(result_before_xtrain)
-
-    rmse_mf = results_before_xtrain.mean_rmse_mf()
-    rmse_cs = results_before_xtrain.mean_rmse_cs()
-    print('For {} ratings: MF {}  CS {}'.format(ratings_per_user, rmse_mf, rmse_cs))
+    rmse_mf_baseline = results_mf.mean('rmse')
+    print('For {} ratings: MF_Baseline {}'.format(ratings_per_user, rmse_mf_baseline))
 
     x.append(ratings_per_user)
-    y_mf.append(rmse_mf)
-    y_cs.append(rmse_cs)
+    # y_mf.append(rmse_mf)
+    # y_cs.append(rmse_cs)
+    y_mf_baseline.append(rmse_mf_baseline)
 
 print('x =', x)
-print('y_mf =', y_mf)
-print('y_cs =', y_cs)
+# print('y_mf_x =', y_mf)
+# print('y_cs_x =', y_cs)
+print('y_mf_baseline =', y_mf_baseline)

@@ -9,6 +9,7 @@ from keras.models import Model
 
 # Local
 from util import BiasLayer
+from hybrid_model import evaluation
 
 # bias_init = Constant(0.606)
 bias_init = Constant(0.5)
@@ -22,10 +23,27 @@ class AbstractKerasModel:
         self.model.compile(optimizer, 'mse')
 
     def fit(self, x_train, y_train, **kwargs):
+        if hasattr(self, 'transformation'):
+            y_train = self.transformation.transform(y_train)
+
         return self.model.fit(x_train, y_train, **kwargs)
 
     def predict(self, x_test, **kwargs):
         return self.model.predict(x_test, **kwargs).flatten()
+
+    def evaluate(self, x_test, y_test) -> evaluation.EvaluationResultModel:
+        result = evaluation.EvaluationResultModel()
+        y_pred = self.model.predict(x_test)
+
+        if hasattr(self, 'transformation'):
+            y_pred = np.maximum(0.0, y_pred)
+            y_pred = np.minimum(1.0, y_pred)
+            y_pred = self.transformation.invtransform(y_pred)
+
+        for metric, fun_metric in evaluation.metrics.items():
+            result.results[metric] = fun_metric(y_test, y_pred, x_test)
+
+        return result
 
 
 class Ensemble(AbstractKerasModel):
