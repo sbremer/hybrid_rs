@@ -10,6 +10,7 @@ from keras.models import Model
 # Local
 from util import BiasLayer
 from hybrid_model.models import AbstractKerasModel
+from hybrid_model import evaluation
 
 # bias_init = Constant(0.606)
 bias_init = Constant(0.5)
@@ -90,6 +91,15 @@ class BiasEstimator:
             y[ind] = self.global_avg + self.bias_user[u] + self.bias_item[i]
 
         return y
+
+    def evaluate(self, x_test, y_test) -> evaluation.EvaluationResultModel:
+        result = evaluation.EvaluationResultModel()
+        y_pred = self.predict(x_test)
+
+        for metric, fun_metric in evaluation.metrics.items():
+            result.results[metric] = fun_metric(y_test, y_pred, x_test)
+
+        return result
 
 
 class BaselineSVD(AbstractKerasModel):

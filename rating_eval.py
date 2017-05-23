@@ -11,7 +11,7 @@ from hybrid_model.evaluation import EvaluationResults, EvaluationResultsModel
 from hybrid_model.evaluation_parting import stats_user, stats_item
 import util
 
-from hybrid_model.baselines import BaselineSVD
+from hybrid_model.baselines import BaselineSVD, BiasEstimator, BaselineBias
 from hybrid_model.callbacks_custom import EarlyStoppingBestVal
 
 (inds_u, inds_i, y, users_features, items_features) = pickle.load(open('data/ml100k.pickle', 'rb'))
@@ -28,12 +28,16 @@ x = []
 y_mf = []
 y_cs = []
 y_mf_baseline = []
+y_cbias_baseline = []
+y_bias_baseline = []
 
 for ratings_per_user in range(0, 61, 5):
 
     results_before_xtrain = EvaluationResults()
 
     results_mf = EvaluationResultsModel()
+    results_cbias_baseline = EvaluationResultsModel()
+    results_bias_baseline = EvaluationResultsModel()
 
     for _ in range(rep_xval):
 
@@ -77,13 +81,25 @@ for ratings_per_user in range(0, 61, 5):
             inds_i_test = inds_i[xval_test]
             y_test = y[xval_test]
 
-            model = BaselineSVD(n_users, n_items, transformation=transform.TransformationLinear())
+            # model = BiasEstimator(n_users, n_items)
+            # model.fit([inds_u_train, inds_i_train], y_train)
+            # result = model.evaluate([inds_u_test, inds_i_test], y_test)
+            # results_cbias_baseline.add(result)
 
+            model = BaselineBias(n_users, n_items, transformation=transform.TransformationLinear())
             model.fit([inds_u_train, inds_i_train], y_train, batch_size=512, epochs=200,
                           validation_split=0.05, verbose=0, callbacks=callbacks)
 
-            result_mf = model.evaluate([inds_u_test, inds_i_test], y_test)
-            results_mf.add(result_mf)
+            result = model.evaluate([inds_u_test, inds_i_test], y_test)
+            results_bias_baseline.add(result)
+
+            # model = BaselineSVD(n_users, n_items, transformation=transform.TransformationLinear())
+            #
+            # model.fit([inds_u_train, inds_i_train], y_train, batch_size=512, epochs=200,
+            #               validation_split=0.05, verbose=0, callbacks=callbacks)
+            #
+            # result_mf = model.evaluate([inds_u_test, inds_i_test], y_test)
+            # results_mf.add(result_mf)
 
             # Create model
             # model = HybridModel(users_features, items_features, hybrid_config, verbose=0)
@@ -98,15 +114,25 @@ for ratings_per_user in range(0, 61, 5):
     # rmse_cs = results_before_xtrain.mean_rmse_cs()
     # print('For {} ratings: MF {}  CS {}'.format(ratings_per_user, rmse_mf, rmse_cs))
 
-    rmse_mf_baseline = results_mf.mean('rmse')
-    print('For {} ratings: MF_Baseline {}'.format(ratings_per_user, rmse_mf_baseline))
+    # rmse_mf_baseline = results_mf.mean('rmse')
+    # print('For {} ratings: MF_Baseline {}'.format(ratings_per_user, rmse_mf_baseline))
+
+    # rmse_cbias_baselne = results_cbias_baseline.mean('rmse')
+    # print('For {} ratings: cbias_baseline {}'.format(ratings_per_user, rmse_cbias_baselne))
+
+    rmse_bias_baselne = results_bias_baseline.mean('rmse')
+    print('For {} ratings: bias_baseline {}'.format(ratings_per_user, rmse_bias_baselne))
 
     x.append(ratings_per_user)
     # y_mf.append(rmse_mf)
     # y_cs.append(rmse_cs)
-    y_mf_baseline.append(rmse_mf_baseline)
+    # y_mf_baseline.append(rmse_mf_baseline)
+    # y_cbias_baseline.append(rmse_cbias_baselne)
+    y_bias_baseline.append(rmse_bias_baselne)
 
 print('x =', x)
 # print('y_mf_x =', y_mf)
 # print('y_cs_x =', y_cs)
-print('y_mf_baseline =', y_mf_baseline)
+# print('y_mf_baseline =', y_mf_baseline)
+# print('y_cbias_baseline =', y_cbias_baseline)
+print('y_bias_baseline =', y_bias_baseline)
