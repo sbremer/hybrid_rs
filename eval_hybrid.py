@@ -7,6 +7,7 @@ np.random.seed(0)
 from hybrid_model.hybrid import HybridModel, HybridConfig
 from hybrid_model import transform
 from hybrid_model.index_sampler import IndexSampler2, IndexSamplerUserbased
+from hybrid_model.evaluation import Evaluation
 import util
 
 (inds_u, inds_i, y, users_features, items_features) = pickle.load(open('data/ml100k.pickle', 'rb'))
@@ -40,8 +41,7 @@ inds_u_test = inds_u[xval_test]
 inds_i_test = inds_i[xval_test]
 y_test = y[xval_test]
 
-# RMSE MF: 0.9011 	MAE: 0.7133
-# RMSE ANN: 0.9436 	MAE: 0.7474
+evaluation = Evaluation()
 
 # Create config for model
 hybrid_config = HybridConfig(
@@ -69,18 +69,6 @@ hybrid_config = HybridConfig(
     transformation=transform.TransformationLinear
 )
 
-# None
-# RMSE MF: 0.9097 	MAE: 0.7159 	NDCG: 0.5091
-# RMSE ANN: 0.9343 	MAE: 0.7391 	NDCG: 0.4852
-# Linear
-# RMSE MF: 0.8940 	MAE: 0.7042 	NDCG: 0.5227
-# RMSE ANN: 0.9336 	MAE: 0.7380 	NDCG: 0.4842
-# LinearShift
-# RMSE MF: 0.9540 	MAE: 0.7407 	NDCG: 0.4953
-# RMSE ANN: 0.9684 	MAE: 0.7536 	NDCG: 0.4836
-# Quad
-# RMSE MF: 0.9087 	MAE: 0.7093 	NDCG: 0.5156
-# RMSE ANN: 0.9442 	MAE: 0.7385 	NDCG: 0.4837
 
 test_while_fit = False
 
@@ -93,11 +81,11 @@ else:
     model.fit_init_only([inds_u_train, inds_i_train], y_train)
 
     print('Before xtrain:')
-    result = model.evaluate([inds_u_test, inds_i_test], y_test)
+    result = evaluation.evaluate_hybrid(model, [inds_u_test, inds_i_test], y_test)
     print(result)
 
     model.fit_xtrain_only([inds_u_train, inds_i_train], y_train)
 
     print('After xtrain:')
-    result = model.evaluate([inds_u_test, inds_i_test], y_test)
+    result = evaluation.evaluate_hybrid(model, [inds_u_test, inds_i_test], y_test)
     print(result)

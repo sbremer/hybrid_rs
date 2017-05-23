@@ -9,7 +9,7 @@ from math import sqrt
 from keras.optimizers import Optimizer
 
 # Local
-from hybrid_model.models import SVDpp, AttributeBias, Ensemble
+from hybrid_model.models import SVDpp, AttributeBias
 from hybrid_model.callbacks_custom import EarlyStoppingBestVal
 from hybrid_model.index_sampler import IndexSampler
 from hybrid_model import evaluation
@@ -69,8 +69,9 @@ class HybridModel:
 
         # Build models
         self.model_mf = SVDpp(self.n_users, self.n_items, config.n_factors, config.reg_latent, config.reg_bias_mf,
-                              config.implicit_thresh_init, config.implicit_thresh_xtrain)
-        self.model_cs = AttributeBias(meta_users, meta_items, config.reg_att_bias, config.reg_bias_cs)
+                              config.implicit_thresh_init, config.implicit_thresh_xtrain, config.transformation)
+        self.model_cs = AttributeBias(meta_users, meta_items, config.reg_att_bias, config.reg_bias_cs,
+                                      config.transformation)
 
         # Callbacks for early stopping during one cross train iteration
         self.callbacks_mf = [EarlyStoppingBestVal('val_loss', patience=4)]
@@ -135,9 +136,9 @@ class HybridModel:
         self.model_mf.recompute_implicit(self.x_train, self.y_train, True)
 
         # Train both models with the training data only
-        self.model_mf.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_mf, epochs=200,
+        self.model_mf.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_mf, epochs=200,
                           validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_mf)
-        self.model_cs.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_cs, epochs=200,
+        self.model_cs.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_cs, epochs=200,
                           validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_cs)
 
         # Keras fit method "unflattens" arrays on training. Undo this here
@@ -204,7 +205,7 @@ class HybridModel:
         inds_u_x, inds_i_x = self.index_sampler.get_indices_from_cs()
 
         # Get prediction on sampled indices
-        y_x = self.model_cs.predict([inds_u_x, inds_i_x])
+        y_x = self.model_cs.model.predict([inds_u_x, inds_i_x]).flatten()
 
         # Recompute implicit matrix
         self.model_mf.recompute_implicit([inds_u_x, inds_i_x], y_x)
@@ -213,7 +214,7 @@ class HybridModel:
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
 
         # Update-train MF model with cross-train data
-        history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_mf,
+        history = self.model_mf.model.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_mf,
                                     epochs=150, validation_split=self.config.val_split_xtrain, verbose=self.verbose,
                                     callbacks=self.callbacks_mf)
 
@@ -225,13 +226,13 @@ class HybridModel:
         inds_u_x, inds_i_x = self.index_sampler.get_indices_from_mf()
 
         # Get prediction on sampled indices
-        y_x = self.model_mf.predict([inds_u_x, inds_i_x])
+        y_x = self.model_mf.model.predict([inds_u_x, inds_i_x]).flatten()
 
         # Combine data with original training data
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
 
         # Update-train ANN model with cross-train data
-        history = self.model_cs.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_cs,
+        history = self.model_cs.model.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_cs,
                                     epochs=150, validation_split=self.config.val_split_xtrain, verbose=self.verbose,
                                     callbacks=self.callbacks_cs)
 
@@ -241,13 +242,9 @@ class HybridModel:
     def test_mf(self, x_test, y_test, prnt=False):
         y_pred = self.model_mf.predict(x_test)
 
-        y_pred = np.maximum(0.0, y_pred)
-        y_pred = np.minimum(1.0, y_pred)
-        y_pred = self.config.transformation.invtransform(y_pred)
-
-        result = evaluation.EvaluationResultModel()
-        for metric, fun_metric in evaluation.metrics.items():
-            result.results[metric] = fun_metric(y_test, y_pred, x_test)
+        result = evaluation.EvaluationResultPart()
+        for measure, metric in evaluation.metrics_rmse.items():
+            result.results[measure] = metric.calculate(y_test, y_pred, x_test)
 
         if prnt:
             print('MF: ', result)
@@ -257,59 +254,14 @@ class HybridModel:
     def test_cs(self, x_test, y_test, prnt=False):
         y_pred = self.model_cs.predict(x_test)
 
-        y_pred = np.maximum(0.0, y_pred)
-        y_pred = np.minimum(1.0, y_pred)
-        y_pred = self.config.transformation.invtransform(y_pred)
-
-        result = evaluation.EvaluationResultModel()
-        for metric, fun_metric in evaluation.metrics.items():
-            result.results[metric] = fun_metric(y_test, y_pred, x_test)
+        result = evaluation.EvaluationResultPart()
+        for measure, metric in evaluation.metrics_rmse.items():
+            result.results[measure] = metric.calculate(y_test, y_pred, x_test)
 
         if prnt:
             print('CS: ', result)
 
         return result
-
-    def test_ensemble(self, x_test, y_test):
-        ensemble = Ensemble(self.user_dist, self.item_dist)
-
-        inds_u_x, inds_i_x = self.index_sampler.get_indices_from_cs()
-
-        inds_u_xtrain = np.concatenate((inds_u_x, self.x_train[0]))
-        inds_i_xtrain = np.concatenate((inds_i_x, self.x_train[1]))
-
-        x_train = [inds_u_xtrain, inds_i_xtrain]
-
-        results_mf_train = self.model_mf.predict(x_train)
-        results_cs_train = self.model_cs.predict(x_train)
-
-        y_train = np.concatenate((results_cs_train[:len(inds_u_x)], self.y_train))
-
-        ensemble_x_train = x_train + [results_mf_train, results_cs_train]
-        ensemble.fit(ensemble_x_train, y_train, batch_size=512,
-                     epochs=50, validation_split=0.05, verbose=self.verbose,
-                     callbacks=self.callbacks_cs)
-
-        # Keras fit method "unflattens" arrays on training. Undo this here
-        self.x_train[0] = self.x_train[0].flatten()
-        self.x_train[1] = self.x_train[1].flatten()
-
-        results_mf_test = self.model_mf.predict(x_test)
-        results_cs_test = self.model_cs.predict(x_test)
-        ensemble_x_test = x_test + [results_mf_test, results_cs_test]
-
-        y_pred = ensemble.predict(ensemble_x_test)
-
-        result = evaluation.EvaluationResultModel()
-
-        y_pred = np.maximum(0.0, y_pred)
-        y_pred = np.minimum(1.0, y_pred)
-        y_pred = self.config.transformation.invtransform(y_pred)
-
-        for metric, fun_metric in evaluation.metrics.items():
-            result.results[metric] = fun_metric(y_test, y_pred, x_test)
-
-        print('Ensemble: {}'.format(result))
 
     def test(self, x_test, y_test, prnt=False):
         result = evaluation.EvaluationResultPart()
@@ -318,40 +270,6 @@ class HybridModel:
             print('Results of testing:')
         result.model_mf = self.test_mf(x_test, y_test, prnt)
         result.model_cs = self.test_cs(x_test, y_test, prnt)
-
-        return result
-
-    def evaluate(self, x_test, y_test) -> evaluation.EvaluationResult:
-        result = evaluation.EvaluationResult()
-
-        for part, fun_parting in evaluation.parts.items():
-            x_test_part, y_test_part = fun_parting(x_test, y_test, self.user_dist, self.item_dist)
-            result_part = self.evaluate_part(x_test_part, y_test_part)
-            result.parts[part] = result_part
-
-        return result
-
-    def evaluate_part(self, x_test, y_test) -> evaluation.EvaluationResultPart:
-        result = evaluation.EvaluationResultPart()
-
-        # Evaluation of MF
-        result.model_mf = self.evaluate_model(self.model_mf, x_test, y_test)
-
-        # Evaluation of CS
-        result.model_cs = self.evaluate_model(self.model_cs, x_test, y_test)
-
-        return result
-
-    def evaluate_model(self, model, x_test, y_test) -> evaluation.EvaluationResultModel:
-        result = evaluation.EvaluationResultModel()
-        y_pred = model.predict(x_test)
-
-        y_pred = np.maximum(0.0, y_pred)
-        y_pred = np.minimum(1.0, y_pred)
-        y_pred = self.config.transformation.invtransform(y_pred)
-
-        for metric, fun_metric in evaluation.metrics.items():
-            result.results[metric] = fun_metric(y_test, y_pred, x_test)
 
         return result
 
