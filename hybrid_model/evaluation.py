@@ -78,6 +78,7 @@ class EvaluationResultHybrid:
 
         return s
 
+
 class EvaluationResult:
     def __init__(self):
         self.parts: Dict[str, EvaluationResultPart] = {}
@@ -122,6 +123,21 @@ class EvaluationResultsHybrid:
 
         return s
 
+    def mean_rmse_mf(self):
+        """
+        Custom hacky function for Gridsearch
+        """
+        rmse = self.mf.parts['full'].mean('rmse')
+        return rmse
+
+    def mean_rmse_cs(self):
+        """
+        Custom hacky function for Gridsearch
+        """
+        rmse = self.cs.parts['full'].mean('rmse')
+        return rmse
+
+
 class EvaluationResults:
     def __init__(self, metrics: List[str], parts: List[str]):
         self.parts: Dict[str, EvaluationResultsPart] = dict((key, EvaluationResultsPart(metrics)) for key in parts)
@@ -138,20 +154,6 @@ class EvaluationResults:
             s += '\n'
 
         return s
-
-    def mean_rmse_mf(self):
-        """
-        Custom hacky function for Gridsearch
-        """
-        rmses = self.parts['full'].results['rmse']
-        return np.mean(rmses)
-
-    def mean_rmse_cs(self):
-        """
-        Custom hacky function for Gridsearch
-        """
-        rmses = self.parts['full'].results['rmse']
-        return np.mean(rmses)
 
 
 class EvaluationResultsPart:
