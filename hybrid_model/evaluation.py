@@ -42,7 +42,7 @@ class Evaluation:
 
         return result
 
-    def evaluate(self, model: 'hybrid_model.models.AbstractKerasModel', x_test: List[np.ndarray], y_test: np.ndarray) \
+    def evaluate(self, model: 'hybrid_model.models.AbstractModel', x_test: List[np.ndarray], y_test: np.ndarray) \
             -> 'EvaluationResult':
         result = EvaluationResult()
 
@@ -53,7 +53,7 @@ class Evaluation:
 
         return result
 
-    def evaluate_part(self, model: 'hybrid_model.models.AbstractKerasModel', x_test: List[np.ndarray], y_test: np.ndarray) \
+    def evaluate_part(self, model: 'hybrid_model.models.AbstractModel', x_test: List[np.ndarray], y_test: np.ndarray) \
             -> 'EvaluationResultPart':
         result = EvaluationResultPart()
         y_pred = model.predict(x_test)

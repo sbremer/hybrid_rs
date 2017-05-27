@@ -10,37 +10,58 @@ from hybrid_model.transform import TransformationLinear
 
 # Local
 from util import BiasLayer
-from hybrid_model import evaluation
+from hybrid_model.callbacks_custom import EarlyStoppingBestVal
 
-# bias_init = Constant(0.606)
 bias_init = Constant(0.5)
+early_stopping_callback = [EarlyStoppingBestVal('val_loss', patience=10)]
 
 
-class AbstractKerasModel:
-    def __init__(self):
+class AbstractModel:
+    def __init__(self, n_users, n_items, config, transformation):
         self.model: Model = None
+        self.n_users = n_users
+        self.n_items = n_items
+
+        if config is None:
+            config = {}
+        self.config = config
+        self.transformation = transformation
 
     def compile(self, optimizer):
         self.model.compile(optimizer, 'mse')
 
     def fit(self, x_train, y_train, **kwargs):
-        if hasattr(self, 'transformation'):
-            y_train = self.transformation.transform(y_train)
+        y_train = self.transformation.transform(y_train)
+
+        kwargs_default = dict(batch_size=512, epochs=200, validation_split=0.05, verbose=0,
+                              callbacks=early_stopping_callback)
+        kwargs.update(kwargs_default)
 
         return self.model.fit(x_train, y_train, **kwargs)
 
     def predict(self, x_test, **kwargs):
         y_pred = self.model.predict(x_test, **kwargs).flatten()
 
-        if hasattr(self, 'transformation'):
-            y_pred = np.maximum(0.0, y_pred)
-            y_pred = np.minimum(1.0, y_pred)
-            y_pred = self.transformation.invtransform(y_pred)
+        y_pred = np.maximum(0.0, y_pred)
+        y_pred = np.minimum(1.0, y_pred)
+        y_pred = self.transformation.invtransform(y_pred)
 
         return y_pred
 
 
-class SVDpp(AbstractKerasModel):
+class AbstractModelCF(AbstractModel):
+    def __init__(self, n_users, n_items, config, transformation):
+        super().__init__(n_users, n_items, transformation, config)
+
+
+class AbstractModelMD(AbstractModel):
+    def __init__(self, meta_users, meta_items, config, transformation):
+        n_users, self.n_users_features = meta_users.shape[:2]
+        n_items, self.n_items_feature = meta_items.shape[:2]
+        super().__init__(n_users, n_items, transformation, config)
+
+
+class SVDpp(AbstractModel):
     def __init__(self, n_users, n_items, n_factors=40, reg_latent=0.00005, reg_bias=0.00005, implicit_thresh_init=0.4,
                  implicit_thresh_xtrain=0.7, transformation=TransformationLinear()):
 
@@ -106,7 +127,7 @@ class SVDpp(AbstractKerasModel):
         self.model.get_layer('implicit').set_weights([implicit_norm])
 
 
-class AttributeBias(AbstractKerasModel):
+class AttributeBias(AbstractModel):
     def __init__(self, meta_users, meta_items, reg_att_bias=0.002, reg_bias=0.00003, transformation=TransformationLinear()):
 
         self.transformation = transformation
