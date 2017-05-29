@@ -10,7 +10,6 @@ from keras.models import Model
 # Local
 from util import BiasLayer
 from hybrid_model.models import AbstractModel, AbstractModelCF, AbstractModelMD
-from hybrid_model import evaluation
 from hybrid_model.transform import TransformationLinear
 
 bias_init = Constant(0.5)
@@ -18,7 +17,7 @@ bias_init = Constant(0.5)
 
 class BaselineBias(AbstractModelCF):
     def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
-        super().__init__(n_users, n_items, transformation, config)
+        super().__init__(n_users, n_items, config, transformation)
 
         reg_bias = l2(self.config['reg_bias'])
 
@@ -42,7 +41,7 @@ class BaselineBias(AbstractModelCF):
 
 class BiasEstimator(AbstractModelCF):
     def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
-        super().__init__(n_users, n_items, transformation, config)
+        super().__init__(n_users, n_items, config, transformation)
 
         self.include_user = self.config.get('include_user', True)
         self.include_item = self.config.get('include_item', True)
@@ -93,7 +92,7 @@ class BiasEstimator(AbstractModelCF):
 
 class BaselineSVD(AbstractModelCF):
     def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
-        super().__init__(n_users, n_items, transformation, config)
+        super().__init__(n_users, n_items, config, transformation)
 
         n_factors = self.config['n_factors']
         reg_latent = l1(self.config['reg_latent'])
@@ -127,7 +126,7 @@ class BaselineSVD(AbstractModelCF):
 
 class BaselineSVDpp(AbstractModelCF):
     def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
-        super().__init__(n_users, n_items, transformation, config)
+        super().__init__(n_users, n_items, config, transformation)
 
         self.implicit = np.zeros((self.n_users, self.n_items))
 
