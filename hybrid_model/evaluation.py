@@ -107,7 +107,7 @@ class EvaluationResultPart:
 
 # === Multiple Evaluation Results (from Folds)
 class EvaluationResultsHybrid:
-    def __init__(self, metrics: List[str], parts: List[str]):
+    def __init__(self, metrics: List[str] = metrics_rmse.keys(), parts: List[str] = parting_full.keys()):
         self.mf = EvaluationResults(metrics, parts)
         self.cs = EvaluationResults(metrics, parts)
 
@@ -139,7 +139,7 @@ class EvaluationResultsHybrid:
 
 
 class EvaluationResults:
-    def __init__(self, metrics: List[str], parts: List[str]):
+    def __init__(self, metrics: List[str] = metrics_rmse.keys(), parts: List[str] = parting_full.keys()):
         self.parts: Dict[str, EvaluationResultsPart] = dict((key, EvaluationResultsPart(metrics)) for key in parts)
 
     def add(self, result: EvaluationResult):
@@ -159,7 +159,6 @@ class EvaluationResults:
 class EvaluationResultsPart:
     def __init__(self, metrics):
         self.results: Dict[str, List[float]] = dict((key, []) for key in metrics)
-        self.metrics = metrics
 
     def __str__(self):
         s = ''
@@ -171,7 +170,7 @@ class EvaluationResultsPart:
         return s
 
     def add(self, result: EvaluationResultPart):
-        for metric in self.metrics.keys():
+        for metric in self.results.keys():
             self.results[metric].append(result.results[metric])
 
     def mean(self, metric):

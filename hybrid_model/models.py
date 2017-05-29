@@ -51,14 +51,14 @@ class AbstractModel:
 
 class AbstractModelCF(AbstractModel):
     def __init__(self, n_users, n_items, config, transformation):
-        super().__init__(n_users, n_items, transformation, config)
+        super().__init__(n_users, n_items, config, transformation)
 
 
 class AbstractModelMD(AbstractModel):
     def __init__(self, meta_users, meta_items, config, transformation):
         n_users, self.n_users_features = meta_users.shape[:2]
         n_items, self.n_items_feature = meta_items.shape[:2]
-        super().__init__(n_users, n_items, transformation, config)
+        super().__init__(n_users, n_items, config, transformation)
 
 
 class SVDpp(AbstractModel):
