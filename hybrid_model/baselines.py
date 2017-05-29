@@ -19,7 +19,7 @@ class BaselineBias(AbstractModelCF):
     def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
         super().__init__(n_users, n_items, config, transformation)
 
-        reg_bias = l2(self.config['reg_bias'])
+        reg_bias = l1(self.config['reg_bias'])
 
         input_u = Input((1,))
         input_i = Input((1,))
@@ -239,8 +239,8 @@ class AttributeBiasExperimental(AbstractModelMD):
     def __init__(self, meta_users, meta_items, config=None, transformation=TransformationLinear()):
         super().__init__(meta_users, meta_items, config, transformation)
 
-        reg_bias = l2(self.config['reg_bias'])
-        reg_att_bias = l2(self.config['reg_att_bias'])
+        reg_bias = l1(self.config['reg_bias'])
+        reg_att_bias = l1(self.config['reg_att_bias'])
 
         input_u = Input((1,))
         input_i = Input((1,))

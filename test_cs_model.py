@@ -2,19 +2,42 @@ from eval_script import evaluate_models_single, evaluate_models_xval, print_resu
 from hybrid_model.dataset import get_dataset
 
 """
+ml100k
+------- BaselineBias
+Combined Results:
+=== Part full
+rmse: 1.0118 ± 0.0006
+
 ------- AttributeBias
 Combined Results:
 === Part full
-rmse: 1.0118 ± 0.0013
+rmse: 1.0102 ± 0.0012
 
 ------- AttributeBiasExperimental
 Combined Results:
 === Part full
-rmse: 1.0114 ± 0.0008
+rmse: 1.0091 ± 0.0010
+
+ml1m
+------- BaselineBias
+Combined Results:
+=== Part full
+rmse: 0.9854 ± 0.0002
+
+------- AttributeBias
+Combined Results:
+=== Part full
+rmse: 0.9841 ± 0.0003
+
+------- AttributeBiasExperimental
+Combined Results:
+=== Part full
+rmse: 0.9816 ± 0.0003
 """
 
 # Get dataset
-dataset = get_dataset('ml100k')
+# dataset = get_dataset('ml100k')
+dataset = get_dataset('ml1m')
 
 models = []
 
@@ -30,7 +53,7 @@ models = []
 # Bias Baseline
 from hybrid_model.baselines import BaselineBias
 model_type = BaselineBias
-config = dict(reg_bias=0.00005)
+config = dict(reg_bias=0.000001)
 models.append(EvalModel(model_type.__name__, model_type, config))
 
 # # SVD
@@ -47,13 +70,14 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 
 # from hybrid_model.baselines import AttributeBias
 # model_type = AttributeBias
-# config = dict(reg_att_bias=0.0015, reg_bias=0.0001)
+# config = dict(reg_att_bias=0.0015, reg_bias=0.00005)
 # models.append(EvalModel(model_type.__name__, model_type, config))
-#
-# from hybrid_model.baselines import AttributeBiasExperimental
-# model_type = AttributeBiasExperimental
-# config = dict(reg_att_bias=0.0015, reg_bias=0.0001)
-# models.append(EvalModel(model_type.__name__, model_type, config))
+
+from hybrid_model.baselines import AttributeBiasExperimental
+model_type = AttributeBiasExperimental
+config = dict(reg_att_bias=0.00001, reg_bias=0.0000001)
+models.append(EvalModel(model_type.__name__, model_type, config))
+# 1.0074
 
 results = evaluate_models_xval(dataset, models, user_coldstart=True)
 
