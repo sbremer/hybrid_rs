@@ -1,7 +1,7 @@
 import numpy as np
 
 # Keras
-from keras.layers import Embedding, Input, Dense, Flatten, Lambda
+from keras.layers import Embedding, Input, Dense, Flatten, LocallyConnected1D
 from keras.layers.merge import Dot, Concatenate, Add, Multiply
 from keras.regularizers import l1, l2
 from keras.initializers import Constant
@@ -36,7 +36,7 @@ class BaselineBias(AbstractModelCF):
 
         self.model = Model(inputs=[input_u, input_i], outputs=bias_out)
 
-        self.compile('nadam')
+        self.compile('adagrad')
 
 
 class BiasEstimator(AbstractModelCF):
@@ -121,7 +121,7 @@ class BaselineSVD(AbstractModelCF):
 
         self.model = Model(inputs=[input_u, input_i], outputs=mf_out)
 
-        self.compile('adadelta')
+        self.compile('adagrad')
 
 
 class BaselineSVDpp(AbstractModelCF):
@@ -168,7 +168,7 @@ class BaselineSVDpp(AbstractModelCF):
 
         self.model = Model(inputs=[input_u, input_i], outputs=mf_out)
 
-        self.compile('adadelta')
+        self.compile('adagrad')
 
     def recompute_implicit(self, x, y):
 
@@ -284,10 +284,10 @@ class AttributeBiasExperimental(AbstractModelMD):
         bias_i = Flatten()(bias_i)
 
         # Combining
-        concat = Concatenate()([bias_u, bias_i, mult_uf_i, mult_uf_if, feature_bias])
+        concat = Concatenate()([bias_u, bias_i, mult_uf_if, feature_bias])
 
         cs_out = Dense(1, activation='linear', use_bias=True, bias_initializer=bias_init, name='bias')(concat)
-        # cs_out = BiasLayer(name='bias')(concat)
+        # cs_out = BiasLayer(bias_initializer=bias_init, name='bias')(concat)
 
         self.model = Model(inputs=[input_u, input_i], outputs=cs_out)
 

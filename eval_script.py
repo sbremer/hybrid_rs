@@ -37,14 +37,15 @@ def _analyze_model(model, evaluation: Evaluation, train, test)\
     return result
 
 
-def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False):
+def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
-    # Crossvalidation
     n_fold = 5
     if user_coldstart:
-        kfold = util.kfold_entries(n_fold, inds_u)
-        # kfold = util.kfold_entries_plus(n_fold, inds_u, 2)
+        if n_entries == 0:
+            kfold = util.kfold_entries(n_fold, inds_u)
+        else:
+            kfold = util.kfold_entries_plus(n_fold, inds_u, n_entries)
     else:
         kfold = util.kfold(n_fold, inds_u)
 
@@ -105,14 +106,15 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
     return results
 
 
-def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_coldstart=False):
+def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
-    # Crossvalidation
     n_fold = 5
     if user_coldstart:
-        kfold = util.kfold_entries(n_fold, inds_u)
-        # kfold = util.kfold_entries_plus(n_fold, inds_u, 2)
+        if n_entries == 0:
+            kfold = util.kfold_entries(n_fold, inds_u)
+        else:
+            kfold = util.kfold_entries_plus(n_fold, inds_u, n_entries)
     else:
         kfold = util.kfold(n_fold, inds_u)
 
