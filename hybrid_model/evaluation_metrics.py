@@ -48,7 +48,7 @@ class Precision(Metric):
                 else:
                     break
 
-            precision_u = sum(1 for p in pred if p in true) / self.k
+            precision_u = sum(1 for p in pred if p in true) / min(self.k, len(pred))
             precisions[i] = precision_u
 
         return np.mean(precisions)
