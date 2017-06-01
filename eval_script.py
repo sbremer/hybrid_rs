@@ -51,13 +51,16 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
 
     kfold = list(kfold)
 
+    if evaluation is None:
+        evaluation = Evaluation()
+
     # Create results list
     results = []
     for name, model_type, config in models:
         if issubclass(model_type, HybridModel):
-            results.append((name, (EvaluationResultsHybrid(), EvaluationResultsHybrid())))
+            results.append((name, (evaluation.get_results_hybrid_class(), evaluation.get_results_hybrid_class())))
         elif issubclass(model_type, AbstractModelCF) or issubclass(model_type, AbstractModelMD):
-            results.append((name, EvaluationResults()))
+            results.append((name, evaluation.get_results_class()))
         else:
             raise TypeError('Invalid model_type')
 
@@ -74,9 +77,6 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
         inds_u_test = inds_u[xval_test]
         inds_i_test = inds_i[xval_test]
         y_test = y[xval_test]
-
-        if evaluation is None:
-            evaluation = Evaluation()
 
         train = ([inds_u_train, inds_i_train], y_train)
         test = ([inds_u_test, inds_i_test], y_test)

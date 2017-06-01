@@ -63,6 +63,12 @@ class Evaluation:
 
         return result
 
+    def get_results_class(self):
+        return EvaluationResults(self.metrics, self.parts)
+
+    def get_results_hybrid_class(self):
+        return EvaluationResultsHybrid(self.metrics, self.parts)
+
 
 # === Single Evaluation Results
 class EvaluationResultHybrid:

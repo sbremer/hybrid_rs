@@ -1,4 +1,4 @@
-from eval_script import evaluate_models_single, print_results, EvalModel
+from eval_script import evaluate_models_xval, print_results, EvalModel
 from hybrid_model.evaluation import Evaluation
 from hybrid_model import evaluation_metrics
 from hybrid_model.dataset import get_dataset
@@ -28,5 +28,5 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 metrics = {'rmse': evaluation_metrics.Rmse(), 'prec@5': evaluation_metrics.Precision(5)}
 evaluation = Evaluation(metrics)
 
-results = evaluate_models_single(dataset, models, user_coldstart=False, evaluation=evaluation)
+results = evaluate_models_xval(dataset, models, user_coldstart=False, evaluation=evaluation)
 print_results(results)
