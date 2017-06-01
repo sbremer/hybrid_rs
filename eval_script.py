@@ -37,7 +37,7 @@ def _analyze_model(model, evaluation: Evaluation, train, test)\
     return result
 
 
-def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0):
+def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0, evaluation=None):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
     n_fold = 5
@@ -75,7 +75,8 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
         inds_i_test = inds_i[xval_test]
         y_test = y[xval_test]
 
-        evaluation = Evaluation()
+        if evaluation is None:
+            evaluation = Evaluation()
 
         train = ([inds_u_train, inds_i_train], y_train)
         test = ([inds_u_test, inds_i_test], y_test)
@@ -106,7 +107,7 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
     return results
 
 
-def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0):
+def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0, evaluation=None):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
     n_fold = 5
@@ -133,7 +134,8 @@ def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_colds
     inds_i_test = inds_i[xval_test]
     y_test = y[xval_test]
 
-    evaluation = Evaluation()
+    if evaluation is None:
+        evaluation = Evaluation()
 
     train = ([inds_u_train, inds_i_train], y_train)
     test = ([inds_u_test, inds_i_test], y_test)

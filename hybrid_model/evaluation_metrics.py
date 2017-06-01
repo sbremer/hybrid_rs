@@ -44,7 +44,7 @@ class Precision(Metric):
 
             for r in sort_true[self.k:]:
                 if y_true_u[r] == y_true_u[true[-1]]:
-                    true.append(y_true_u[r])
+                    true.append(r)
                 else:
                     break
 
