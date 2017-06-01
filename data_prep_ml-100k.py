@@ -22,7 +22,7 @@ n_users = ratings.user_id.unique().shape[0]
 n_items = ratings.item_id.unique().shape[0]
 
 # Build user data
-age_groups = [0, 15, 20, 25, 30, 25, 40, 45, 50, 55, 65, 200]
+age_groups = [0, 18, 25, 35, 45, 50, 56, 200]
 user_age = np.array(users.age)
 
 for lower, upper in zip(age_groups[:-1], age_groups[1:]):
