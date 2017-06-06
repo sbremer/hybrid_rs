@@ -25,19 +25,23 @@ class AbstractModel:
         if config is None:
             config = {}
         self.config = config
+        self.optimizer = self.config.get('optimizer', 'adagrad')
         self.transformation = transformation
 
-    def compile(self, optimizer):
-        self.model.compile(optimizer, 'mse')
+    def compile(self, optimizer=None):
+        if optimizer:
+            self.model.compile(optimizer, 'mse')
+        else:
+            self.model.compile(self.optimizer, 'mse')
 
     def fit(self, x_train, y_train, **kwargs):
         y_train = self.transformation.transform(y_train)
 
         kwargs_default = dict(batch_size=512, epochs=200, validation_split=0.05, verbose=0,
                               callbacks=early_stopping_callback)
-        kwargs.update(kwargs_default)
+        kwargs_default.update(kwargs)
 
-        return self.model.fit(x_train, y_train, **kwargs)
+        return self.model.fit(x_train, y_train, **kwargs_default)
 
     def predict(self, x_test, **kwargs):
         y_pred = self.model.predict(x_test, **kwargs).flatten()

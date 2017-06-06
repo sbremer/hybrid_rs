@@ -1,4 +1,6 @@
 from eval_script import evaluate_models_single, evaluate_models_xval, print_results, EvalModel
+from hybrid_model.evaluation import Evaluation
+from hybrid_model import evaluation_metrics
 from hybrid_model.dataset import get_dataset
 
 """
@@ -43,25 +45,31 @@ models = []
 # config = hybrid_config
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-# rmse: 1.0107 ± 0.0002
+# # Bias Baseline
+# from hybrid_model.baselines import BaselineBias
+# model_type = BaselineBias
+# config = dict(reg_bias=0.000003)
+# models.append(EvalModel(model_type.__name__, model_type, config))
 
-# Bias Baseline
-from hybrid_model.baselines import BaselineBias
-model_type = BaselineBias
-config = dict(reg_bias=0.000003)
-models.append(EvalModel(model_type.__name__, model_type, config))
+"""
+l1
+0.9115 @ n_factors=35, reg_bias=0.000001, reg_latent=0.000001
+l2
+0.9155 @ n_factors=35, reg_bias=0.00001, reg_latent=0.00001
+
+"""
 
 # # SVD
 # from hybrid_model.baselines import BaselineSVD
 # model_type = BaselineSVD
-# config = dict(n_factors=40, reg_bias=0.000004, reg_latent=0.000001)
+# config = dict(n_factors=35, reg_bias=0.00002, reg_latent=0.00002)
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-# # SVD++
-# from hybrid_model.baselines import BaselineSVDpp
-# model_type = BaselineSVDpp
-# config = dict(n_factors=40, reg_bias=0.00004, reg_latent=0.00005, implicit_thresh=3.5)
-# models.append(EvalModel(model_type.__name__, model_type, config))
+# SVD++
+from hybrid_model.baselines import BaselineSVDpp
+model_type = BaselineSVDpp
+config = dict(n_factors=35, reg_bias=0.00001, reg_latent=0.00003, implicit_thresh=3.5)
+models.append(EvalModel(model_type.__name__, model_type, config))
 
 # from hybrid_model.baselines import AttributeBias
 # model_type = AttributeBias
@@ -70,20 +78,34 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 
 # from hybrid_model.baselines import AttributeBiasExperimental
 # model_type = AttributeBiasExperimental
-# config = dict(reg_att_bias=0.00001, reg_bias=0.0000001)
+# config = dict(reg_bias=0.000003, reg_att_bias=0.000005)
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-results = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=0)
-print('Coldstart')
+metrics = {'rmse': evaluation_metrics.Rmse(), 'prec@5': evaluation_metrics.Precision(5)}
+evaluation = Evaluation(metrics)
+
+# results = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=0, evaluation=evaluation)
+# print('Coldstart0')
+# print_results(results)
+#
+# results = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=10, evaluation=evaluation)
+# print('Coldstart10')
+# print_results(results)
+#
+results = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=50, evaluation=evaluation)
+print('Coldstart30')
 print_results(results)
 
 """
 ml1m
-0: Bias   AttE 0.9785 SVD++ 0.9947 SVD
-20: AttE 0.9113 SVD++ 0.9420
-30: AttE  CF
+0: Bias 0.9793 AttE 0.9739 SVD++ 0.9947 SVD 0.9790
+10: AttE 0.9371 SVD 0.9301
+20: Bias 0.9261 AttE 0.9102 SVD++ 0.9420 SVD 0.9104
+30: AttE 0.8995 SVD 0.9029 SVD++ 0.8988
+50: AttE 0.8948 SVD 0.8999
+
 """
 
-results = evaluate_models_xval(dataset, models, user_coldstart=False)
-print('Normal')
-print_results(results)
+# results = evaluate_models_xval(dataset, models, user_coldstart=False, evaluation=evaluation)
+# print('Normal')
+# print_results(results)

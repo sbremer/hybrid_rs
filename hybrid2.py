@@ -287,7 +287,7 @@ for u, i, r in zip(inds_u_xtrain, inds_i_xtrain, y_xtrain):
 implicit_norm = implicit / np.sqrt(np.maximum(1, np.sum(implicit, axis=1)[:, None]))
 model_mf.get_layer('implicit').set_weights([implicit_norm])
 
-# model_mf.fit([inds_u_xtrain_con, inds_i_xtrain_con], y_xtrain_con, batch_size=500, epochs=100,
+# model_cf.fit([inds_u_xtrain_con, inds_i_xtrain_con], y_xtrain_con, batch_size=500, epochs=100,
 #                    validation_split=0.1, verbose=0, callbacks=callbacks)
 model_mf.fit([inds_u_train, inds_i_train], y_train, batch_size=500, epochs=100,
                    validation_split=0.1, verbose=0, callbacks=callbacks)

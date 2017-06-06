@@ -11,10 +11,10 @@ class IndexSampler:
         for u_i in zip(x_train[0], x_train[1]):
             self.lookup[u_i] = True
 
-    def get_indices_from_mf(self):
+    def get_indices_from_cf(self):
         raise NotImplementedError
 
-    def get_indices_from_cs(self):
+    def get_indices_from_md(self):
         raise NotImplementedError
 
 
@@ -46,7 +46,7 @@ class IndexSamplerUserbased(IndexSampler):
         self.n_inds_from_cs = np.sum(self.user_dist_cs)
         print('n_inds_from_cs = {}'.format(self.n_inds_from_cs))
 
-    def get_indices_from_mf(self):
+    def get_indices_from_cf(self):
         inds_u = np.zeros((self.n_inds_from_mf,), np.int)
         inds_i = np.zeros((self.n_inds_from_mf,), np.int)
 
@@ -65,7 +65,7 @@ class IndexSamplerUserbased(IndexSampler):
 
         return inds_u, inds_i
 
-    def get_indices_from_cs(self):
+    def get_indices_from_md(self):
         inds_u = np.zeros((self.n_inds_from_cs,), np.int)
         inds_i = np.zeros((self.n_inds_from_cs,), np.int)
 
@@ -99,7 +99,7 @@ class IndexSamplerUniform(IndexSampler):
         self.n_inds_from_mf = n_inds_from_mf
         self.n_inds_from_cs = n_inds_from_cs
 
-    def get_indices_from_mf(self):
+    def get_indices_from_cf(self):
         inds_u = np.zeros((self.n_inds_from_mf,), np.int)
         inds_i = np.zeros((self.n_inds_from_mf,), np.int)
 
@@ -118,7 +118,7 @@ class IndexSamplerUniform(IndexSampler):
 
         return inds_u, inds_i
 
-    def get_indices_from_cs(self):
+    def get_indices_from_md(self):
         inds_u = np.zeros((self.n_inds_from_cs,), np.int)
         inds_i = np.zeros((self.n_inds_from_cs,), np.int)
 

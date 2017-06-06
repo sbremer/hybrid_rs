@@ -94,9 +94,9 @@ class BaselineSVD(AbstractModelCF):
     def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
         super().__init__(n_users, n_items, config, transformation)
 
-        n_factors = self.config['n_factors']
-        reg_latent = l1(self.config['reg_latent'])
-        reg_bias = l1(self.config['reg_bias'])
+        n_factors = self.config.get('n_factors', 35)
+        reg_latent = l2(self.config.get('reg_latent', 0))
+        reg_bias = l2(self.config.get('reg_bias', 0))
 
         input_u = Input((1,))
         input_i = Input((1,))
@@ -121,7 +121,7 @@ class BaselineSVD(AbstractModelCF):
 
         self.model = Model(inputs=[input_u, input_i], outputs=mf_out)
 
-        self.compile('adagrad')
+        self.compile()
 
 
 class BaselineSVDpp(AbstractModelCF):
@@ -130,11 +130,10 @@ class BaselineSVDpp(AbstractModelCF):
 
         self.implicit = np.zeros((self.n_users, self.n_items))
 
-        self.implicit_thresh = self.config['implicit_thresh']
-
-        n_factors = self.config['n_factors']
-        reg_latent = l2(self.config['reg_latent'])
-        reg_bias = l2(self.config['reg_bias'])
+        n_factors = self.config.get('n_factors', 35)
+        reg_bias = l2(self.config.get('reg_bias', 0.00001))
+        reg_latent = l2(self.config.get('reg_latent', 0.00003))
+        self.implicit_thresh = self.config.get('implicit_thresh', 3.5)
 
         input_u = Input((1,))
         input_i = Input((1,))
@@ -168,15 +167,18 @@ class BaselineSVDpp(AbstractModelCF):
 
         self.model = Model(inputs=[input_u, input_i], outputs=mf_out)
 
-        self.compile('adagrad')
+        self.compile()
 
-    def recompute_implicit(self, x, y):
+    def recompute_implicit(self, x, y, thresh=None):
+
+        if thresh is None:
+            thresh = self.implicit_thresh
 
         inds_u, inds_i = x
 
         # Use ratings over the threshold as implicit feedback
         for u, i, r in zip(inds_u, inds_i, y):
-            if r >= self.implicit_thresh:
+            if r >= thresh:
                 self.implicit[u, i] = 1.0
 
         # Normalize using sqrt (ref. SVD++ paper)
@@ -239,8 +241,8 @@ class AttributeBiasExperimental(AbstractModelMD):
     def __init__(self, meta_users, meta_items, config=None, transformation=TransformationLinear()):
         super().__init__(meta_users, meta_items, config, transformation)
 
-        reg_bias = l1(self.config['reg_bias'])
-        reg_att_bias = l1(self.config['reg_att_bias'])
+        reg_bias = l1(self.config.get('reg_bias', 0.000003))
+        reg_att_bias = l1(self.config.get('reg_att_bias', 0.000005))
 
         input_u = Input((1,))
         input_i = Input((1,))
@@ -263,11 +265,11 @@ class AttributeBiasExperimental(AbstractModelMD):
         uf_i = Flatten()(uf_i)
         mult_uf_i = Multiply()([uf_i, vec_features_u])
 
-        # # User x Item Features
-        # u_if = Embedding(self.n_users, self.n_items_feature, input_length=1, embeddings_regularizer=reg_att_bias,
-        #                  embeddings_initializer='zeros')(input_u)
-        # u_if = Flatten()(u_if)
-        # mult_u_if = Multiply()([u_if, vec_features_i])
+        # User x Item Features
+        u_if = Embedding(self.n_users, self.n_items_feature, input_length=1, embeddings_regularizer=reg_att_bias,
+                         embeddings_initializer='zeros')(input_u)
+        u_if = Flatten()(u_if)
+        mult_u_if = Multiply()([u_if, vec_features_i])
 
         # Features User x Features Item
         uf_if = Dense(self.n_users_features, kernel_initializer='zeros', activation='linear',
@@ -284,7 +286,7 @@ class AttributeBiasExperimental(AbstractModelMD):
         bias_i = Flatten()(bias_i)
 
         # Combining
-        concat = Concatenate()([bias_u, bias_i, mult_uf_if, feature_bias])
+        concat = Concatenate()([bias_u, bias_i, mult_uf_i, mult_u_if, mult_uf_if, feature_bias])
 
         cs_out = Dense(1, activation='linear', use_bias=True, bias_initializer=bias_init, name='bias')(concat)
         # cs_out = BiasLayer(bias_initializer=bias_init, name='bias')(concat)
@@ -297,4 +299,4 @@ class AttributeBiasExperimental(AbstractModelMD):
         self.model.get_layer('users_features').set_weights([meta_users])
         self.model.get_layer('items_features').set_weights([meta_items])
 
-        self.compile('nadam')
+        self.compile()

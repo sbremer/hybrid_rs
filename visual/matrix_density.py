@@ -32,16 +32,16 @@ inds_i = np.argsort(order_items)[inds_i]
 
 # Index sampling
 sampler = IndexSamplerUserbased(dist_users, dist_items, [inds_u, inds_i])
-from_mf = sampler.get_indices_from_mf()
-from_cs = sampler.get_indices_from_cs()
+from_mf = sampler.get_indices_from_cf()
+from_cs = sampler.get_indices_from_md()
 
 # Actual painting
-img = np.zeros((dataset.n_users, dataset.n_items, 3), np.float)
+img = np.ones((dataset.n_users, dataset.n_items, 3), np.float)
 
 bs = 3
 
-for u, i in zip(inds_u, inds_i):
-    img[u-bs:u+bs, i-bs:i+bs, :] = 1.0
+# for u, i in zip(inds_u, inds_i):
+#     img[u-bs:u+bs, i-bs:i+bs, :] = 0.0
 
 bs = 2
 

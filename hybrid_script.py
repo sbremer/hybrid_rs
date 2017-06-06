@@ -35,7 +35,7 @@ n_xtrain = int(n_train / 2)
 for i in range(5):
     print('Training step {}'.format(i + 1))
     # MF step
-    model._step_mf(n_xtrain)
+    model._step_md_cf(n_xtrain)
 
     # ANN step
     model.step_ann(n_xtrain)

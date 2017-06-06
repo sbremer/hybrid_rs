@@ -42,7 +42,7 @@ def get_model():
     ann_2 = Dense(50, kernel_initializer='uniform', activation='sigmoid')(ann_1)
     ann_3 = Dense(1, kernel_initializer='uniform', activation='sigmoid')(ann_2)
 
-    # added = Add()([mf, bias_u, bias_i, ann_3])
+    # added = Add()([cf, bias_u, bias_i, ann_3])
     added = Add()([bias_u, bias_i, ann_3])
 
     model = Model(inputs=[input_u, input_i, input_x], outputs=bias_i)

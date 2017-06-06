@@ -135,7 +135,7 @@ class HybridModel:
 
         # Get n_xsize random indices not in the training set
         if from_mf:
-            inds_u_x, inds_i_x = self.index_gen.get_indices_from_mf(int(self.n_train * f_xsize))
+            inds_u_x, inds_i_x = self.index_gen.get_indices_from_cf(int(self.n_train * f_xsize))
         else:
             inds_u_x, inds_i_x = self.index_gen.get_indices_from_ann(int(self.n_train * f_xsize))
 
@@ -188,7 +188,7 @@ class HybridModel:
         # Update-train MF model with cross-train data
         history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=batch_size, epochs=100,
                                     validation_split=val_split, verbose=verbose, callbacks=self.callbacks_mf)
-        # history = self.model_mf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain - self.mean, batch_size=batch_size,
+        # history = self.model_cf.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain - self.mean, batch_size=batch_size,
         #                             epochs=1, validation_split=val_split, verbose=verbose)
 
         return history
@@ -264,7 +264,7 @@ class HybridModel:
         callbacks_mf = [util.EarlyStoppingBestVal('val_loss', patience=4)]
         callbacks_ann = [util.EarlyStoppingBestVal('val_loss', patience=8)]
 
-        # callbacks_mf = [EarlyStopping('val_loss', patience=4)]
+        # callbacks_cf = [EarlyStopping('val_loss', patience=4)]
         # callbacks_ann = [EarlyStopping('val_loss', patience=8)]
 
         # Run initial training

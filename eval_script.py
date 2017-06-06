@@ -24,7 +24,7 @@ def _analyze_hybrid(hybrid_model, evaluation: Evaluation, train, test)\
     hybrid_model.fit_init_only(*train)
     result_before_x = evaluation.evaluate_hybrid(hybrid_model, *test)
 
-    hybrid_model.fit_xtrain_only(*train)
+    hybrid_model.fit_xtrain_only()
     result_after_x = evaluation.evaluate_hybrid(hybrid_model, *test)
 
     return result_before_x, result_after_x

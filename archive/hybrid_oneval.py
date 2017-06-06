@@ -78,7 +78,7 @@ f_tsize = 1.0
 f_xsize = 0.3
 
 if user_coldstart:
-    history_mf = model._step_mf(2.0)
+    history_mf = model._step_md_cf(2.0)
 
     print('Results after coldstart xtrain step:')
     rmse_mf, rmse_ann = model.test(inds_u_test, inds_i_test, y_test, True)
@@ -93,7 +93,7 @@ history_ann = model.step_ann(0.3, f_tsize, True)
 vloss_ann.append(min(history_ann.history['val_loss']))
 
 # MF step
-history_mf = model._step_mf(0.5, f_tsize, True)
+history_mf = model._step_md_cf(0.5, f_tsize, True)
 vloss_mf.append(min(history_mf.history['val_loss']))
 
 # Test

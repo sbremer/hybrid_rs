@@ -10,6 +10,7 @@ metrics_rmse = {'rmse': evaluation_metrics.Rmse()}
 
 metrics_all = {'rmse': evaluation_metrics.Rmse(),
                'mae': evaluation_metrics.Mae(),
+               'prec@5': evaluation_metrics.Precision(5),
                'ndcg@5': evaluation_metrics.Ndcg(5)}
 
 parting_full = {'full': evaluation_parting.Full()}
@@ -37,8 +38,8 @@ class Evaluation:
     def evaluate_hybrid(self, model: 'hybrid_model.hybrid.HybridModel', x_test: List[np.ndarray], y_test: np.ndarray) \
             -> 'EvaluationResultHybrid':
         result = EvaluationResultHybrid()
-        result.mf = self.evaluate(model.model_mf, x_test, y_test)
-        result.cs = self.evaluate(model.model_cs, x_test, y_test)
+        result.cf = self.evaluate(model.model_cf, x_test, y_test)
+        result.md = self.evaluate(model.model_md, x_test, y_test)
 
         return result
 
@@ -73,14 +74,14 @@ class Evaluation:
 # === Single Evaluation Results
 class EvaluationResultHybrid:
     def __init__(self):
-        self.mf = EvaluationResult()
-        self.cs = EvaluationResult()
+        self.cf = EvaluationResult()
+        self.md = EvaluationResult()
 
     def __str__(self):
-        s = 'MF:\n'
-        s += str(self.mf)
-        s += 'CS:\n'
-        s += str(self.cs)
+        s = 'CF:\n'
+        s += str(self.cf)
+        s += 'MD:\n'
+        s += str(self.md)
 
         return s
 
@@ -114,18 +115,18 @@ class EvaluationResultPart:
 # === Multiple Evaluation Results (from Folds)
 class EvaluationResultsHybrid:
     def __init__(self, metrics: List[str] = metrics_rmse.keys(), parts: List[str] = parting_full.keys()):
-        self.mf = EvaluationResults(metrics, parts)
-        self.cs = EvaluationResults(metrics, parts)
+        self.cf = EvaluationResults(metrics, parts)
+        self.md = EvaluationResults(metrics, parts)
 
     def add(self, result: EvaluationResultHybrid):
-        self.mf.add(result.mf)
-        self.cs.add(result.cs)
+        self.cf.add(result.cf)
+        self.md.add(result.md)
 
     def __str__(self):
         s = 'MF:\n'
-        s += str(self.mf)
+        s += str(self.cf)
         s += 'CS:\n'
-        s += str(self.cs)
+        s += str(self.md)
 
         return s
 
@@ -133,14 +134,14 @@ class EvaluationResultsHybrid:
         """
         Custom hacky function for Gridsearch
         """
-        rmse = self.mf.parts['full'].mean('rmse')
+        rmse = self.cf.parts['full'].mean('rmse')
         return rmse
 
     def mean_rmse_cs(self):
         """
         Custom hacky function for Gridsearch
         """
-        rmse = self.cs.parts['full'].mean('rmse')
+        rmse = self.md.parts['full'].mean('rmse')
         return rmse
 
 
