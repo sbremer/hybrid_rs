@@ -123,9 +123,9 @@ class EvaluationResultsHybrid:
         self.md.add(result.md)
 
     def __str__(self):
-        s = 'MF:\n'
+        s = 'CF:\n'
         s += str(self.cf)
-        s += 'CS:\n'
+        s += 'MD:\n'
         s += str(self.md)
 
         return s

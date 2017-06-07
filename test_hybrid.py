@@ -19,3 +19,49 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 results = evaluate_models_xval(dataset, models, user_coldstart=False)
 print('Normal')
 print_results(results)
+
+"""
+Normal
+------- HybridModel
+Hybrid before xtrain:
+CF:
+Combined Results:
+=== Part full
+rmse: 0.9036 ± 0.0030
+MD:
+Combined Results:
+=== Part full
+rmse: 0.9308 ± 0.0010
+
+Hybrid after xtrain:
+CF:
+Combined Results:
+=== Part full
+rmse: 0.8936 ± 0.0004
+MD:
+Combined Results:
+=== Part full
+rmse: 0.9276 ± 0.0007
+
+Cold-start
+------- HybridModel
+Hybrid before xtrain:
+CF:
+Combined Results:
+=== Part full
+rmse: 1.0653 ± 0.0022
+MD:
+Combined Results:
+=== Part full
+rmse: 1.0097 ± 0.0014
+
+Hybrid after xtrain:
+CF:
+Combined Results:
+=== Part full
+rmse: 1.0099 ± 0.0026
+MD:
+Combined Results:
+=== Part full
+rmse: 1.0144 ± 0.0024
+"""

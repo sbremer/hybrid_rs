@@ -94,9 +94,10 @@ class HybridModel:
     def fit_init_only(self, x_train, y_train, x_test=None, y_test=None):
         y_train = self.config.transformation.transform(y_train)
 
-        self.x_train = x_train
-        self.y_train = y_train
+        self.x_train = [x_train[0].reshape((len(x_train[0]), 1)), x_train[1].reshape((len(x_train[1]), 1))]
         self.n_train = len(y_train)
+        self.y_train = y_train.reshape((self.n_train,1))
+
 
         # Get distribution of ratings per user and item
         self.user_dist = np.bincount(x_train[0], minlength=self.n_users)
@@ -141,8 +142,8 @@ class HybridModel:
                                 validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_md)
 
         # Keras fit method "unflattens" arrays on training. Undo this here
-        self.x_train[0] = self.x_train[0].flatten()
-        self.x_train[1] = self.x_train[1].flatten()
+        # self.x_train[0] = self.x_train[0].flatten()
+        # self.x_train[1] = self.x_train[1].flatten()
 
         # Test of data was handed
         if x_test:
@@ -164,11 +165,8 @@ class HybridModel:
         for i in range(20):
             print('Training step {}'.format(i + 1))
 
-            self._step_cf_md()
-
-            # MF step (CS -> MF, train matrix factorization model with augmented data by coldstart model)
-            # Cross training is subject to early stopping depending on the MF model validation loss
             vloss_cf = self._step_md_cf()
+            self._step_cf_md()
 
             # Performance measure through test data
             if x_test:
@@ -203,7 +201,7 @@ class HybridModel:
         inds_u_x, inds_i_x = self.index_sampler.get_indices_from_md()
 
         # Get prediction on sampled indices
-        y_x = self.model_md.model.predict([inds_u_x, inds_i_x]).flatten()
+        y_x = self.model_md.model.predict([inds_u_x, inds_i_x])
 
         # Recompute implicit matrix
         self.model_cf.recompute_implicit([inds_u_x, inds_i_x], y_x, thresh=0.7)
@@ -224,7 +222,7 @@ class HybridModel:
         inds_u_x, inds_i_x = self.index_sampler.get_indices_from_cf()
 
         # Get prediction on sampled indices
-        y_x = self.model_cf.model.predict([inds_u_x, inds_i_x]).flatten()
+        y_x = self.model_cf.model.predict([inds_u_x, inds_i_x])
 
         # Combine data with original training data
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
@@ -257,7 +255,7 @@ class HybridModel:
             result.results[measure] = metric.calculate(y_test, y_pred, x_test)
 
         if prnt:
-            print('CS: ', result)
+            print('MD: ', result)
 
         return result
 
