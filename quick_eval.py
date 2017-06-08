@@ -1,7 +1,8 @@
 import pickle
 import sys
 
-from hybrid_model.util import make_keras_picklable
+from archive.util_keras import make_keras_picklable
+
 make_keras_picklable()
 
 sys.setrecursionlimit(10000)

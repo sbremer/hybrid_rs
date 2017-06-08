@@ -133,7 +133,7 @@ class BaselineSVDpp(AbstractModelCF):
         n_factors = self.config.get('n_factors', 35)
         reg_bias = l2(self.config.get('reg_bias', 0.00001))
         reg_latent = l2(self.config.get('reg_latent', 0.00003))
-        self.implicit_thresh = self.config.get('implicit_thresh', 3.5)
+        self.implicit_thresh = self.config.get('implicit_thresh', 4.0)
 
         input_u = Input((1,))
         input_i = Input((1,))
@@ -169,9 +169,11 @@ class BaselineSVDpp(AbstractModelCF):
 
         self.compile()
 
-    def recompute_implicit(self, x, y, thresh=None):
+    def recompute_implicit(self, x, y, transformed_data=False):
 
-        if thresh is None:
+        if transformed_data:
+            thresh = self.transformation.transform(self.implicit_thresh)
+        else:
             thresh = self.implicit_thresh
 
         inds_u, inds_i = x

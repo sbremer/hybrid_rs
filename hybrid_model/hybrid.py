@@ -1,19 +1,12 @@
 from typing import NewType, NamedTuple, List, Type, Dict
+
 import numpy as np
-import copy
-
-# Keras
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-from math import sqrt
-
 from keras.optimizers import Optimizer
 
-# Local
-from hybrid_model.models import AbstractModelCF, AbstractModelMD
-from hybrid_model.callbacks_custom import EarlyStoppingBestVal
 from hybrid_model.index_sampler import IndexSampler
-from hybrid_model import evaluation
+from hybrid_model.models import AbstractModelCF, AbstractModelMD
 from hybrid_model.transform import Transformation
+from util.callbacks_custom import EarlyStoppingBestVal
 
 Matrix = NewType('Matrix', np.ndarray)
 
@@ -41,8 +34,7 @@ class HybridConfig(NamedTuple):
 
     index_sampler: Type[IndexSampler]
 
-    xtrain_patience: int
-    xtrain_max_epochs: int
+    xtrain_epochs: int
     xtrain_data_shuffle: bool
 
     transformation: Transformation
@@ -62,17 +54,18 @@ class HybridModel:
         self.n_users = meta_users.shape[0]
         self.n_items = meta_items.shape[0]
 
+        # Prepare config for building models
         type_cf = config.model_type_cf
         config_cf = config.model_config_cf
         type_md = config.model_type_md
         config_md = config.model_config_md
-        tranfo = config.transformation
+        transformation = config.transformation
 
         # Build models
-        self.model_cf = type_cf(self.n_users, self.n_items, config_cf, tranfo)
-        self.model_md = type_md(meta_users, meta_items, config_md, tranfo)
+        self.model_cf = type_cf(self.n_users, self.n_items, config_cf, transformation)
+        self.model_md = type_md(meta_users, meta_items, config_md, transformation)
 
-        # Callbacks for early stopping during one cross train iteration
+        # Callbacks for early stopping during one cross-trainin iteration
         self.callbacks_cf = [EarlyStoppingBestVal('val_loss', patience=4)]
         self.callbacks_md = [EarlyStoppingBestVal('val_loss', patience=4)]
 
@@ -86,54 +79,47 @@ class HybridModel:
 
         self.index_sampler: IndexSampler = None
 
-    def fit(self, x_train, y_train, x_test=None, y_test=None):
+    def fit(self, x_train, y_train):
 
-        self.fit_init_only(x_train, y_train, x_test, y_test)
-        self.fit_xtrain_only(x_train, y_train, x_test, y_test)
+        # Initial training
+        self.fit_init(x_train, y_train)
 
-    def fit_init_only(self, x_train, y_train, x_test=None, y_test=None):
+        # Cross training
+        self.fit_cross()
+
+    def fit_init(self, x_train, y_train):
+
+        self.setup_init_training()
+
+        # Transform y data
         y_train = self.config.transformation.transform(y_train)
 
+        # Reshape data into "unflattened" arrays, Keras will do that anyway
         self.x_train = [x_train[0].reshape((len(x_train[0]), 1)), x_train[1].reshape((len(x_train[1]), 1))]
         self.n_train = len(y_train)
-        self.y_train = y_train.reshape((self.n_train,1))
-
+        self.y_train = y_train.reshape((self.n_train, 1))
 
         # Get distribution of ratings per user and item
         self.user_dist = np.bincount(x_train[0], minlength=self.n_users)
         self.item_dist = np.bincount(x_train[1], minlength=self.n_items)
 
-        # Init Index Sampler
-        self.index_sampler = self.config.index_sampler(self.user_dist, self.item_dist, self.x_train)
+        # Initially train models separately
+        self._train_init()
 
-        # # Set initial global bias value to mean of training data
-        # mean = np.mean(y_train).astype(np.float32)
-        # self.model_cf.model.get_layer('bias').weights[0].set_value([mean])
-        # self.model_md.model.get_layer('bias').weights[1].set_value([mean])
+    def setup_init_training(self):
 
         # Compile model using optimizer used for initial training
         self.model_cf.compile(self.config.opt_cf_init)
         self.model_md.compile(self.config.opt_md_init)
 
-        # Initially train models separately
-        self._train_init(x_test, y_test)
-
-    def fit_xtrain_only(self, x_test=None, y_test=None):
-        # Recompile model using optimizer for cross training
-        self.model_cf.compile(self.config.opt_cf_xtrain)
-        self.model_md.compile(self.config.opt_md_xtrain)
-
-        # Run Cross-Training
-        self._train_xtrain(x_test, y_test)
-
-    def _train_init(self, x_test=None, y_test=None):
+    def _train_init(self):
 
         # Initial early stopping callbacks
         callbacks_cf = [EarlyStoppingBestVal('val_loss', patience=10)]
         callbacks_md = [EarlyStoppingBestVal('val_loss', patience=10)]
 
         # Compute implicit matrix for matrix factorization
-        self.model_cf.recompute_implicit(self.x_train, self.y_train, thresh=0.7)
+        self.model_cf.recompute_implicit(self.x_train, self.y_train, transformed_data=True)
 
         # Train both models with the training data only
         self.model_cf.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_cf, epochs=200,
@@ -141,62 +127,36 @@ class HybridModel:
         self.model_md.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_md, epochs=200,
                                 validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_md)
 
-        # Keras fit method "unflattens" arrays on training. Undo this here
-        # self.x_train[0] = self.x_train[0].flatten()
-        # self.x_train[1] = self.x_train[1].flatten()
+    def fit_cross(self):
+        self.setup_cross_training()
 
-        # Test of data was handed
-        if x_test:
-            self.test(x_test, y_test, True)
+        # Alternating cross-training for a fixed number of epochs
+        for i in range(self.config.xtrain_epochs):
 
-    def _train_xtrain(self, x_test=None, y_test=None):
+            if self.verbose != 0:
+                print('Training step {}'.format(i + 1))
 
-        # Config for early stopping
-        patience = self.config.xtrain_patience
-        min_delta = 0.00005
+            self.fit_cross_epoch()
 
-        best_weights_mf = None
-        best_weights_cs = None
+    def setup_cross_training(self):
 
-        vloss_cf_min = float('inf')
-        epoch_min = -1
+        # Init Index Sampler
+        self.index_sampler = self.config.index_sampler(self.user_dist, self.item_dist, self.x_train)
 
-        # Alternating cross-training
-        for i in range(20):
-            print('Training step {}'.format(i + 1))
+        # Recompile model using optimizer for cross-training
+        self.model_cf.compile(self.config.opt_cf_xtrain)
+        self.model_md.compile(self.config.opt_md_xtrain)
 
-            vloss_cf = self._step_md_cf()
-            self._step_cf_md()
+    def fit_cross_epoch(self):
 
-            # Performance measure through test data
-            if x_test:
-                print('Results after training step {}:'.format(i + 1))
-                result = self.test(x_test, y_test, True)
+        # Vice versa
+        self._step_cf_md()
 
-            # Check for early stopping
-            if vloss_cf < vloss_cf_min - min_delta:
-                if self.verbose > 0 or True:
-                    print('Min valloss {:.4f} at epoch {}'.format(vloss_cf, i + 1))
-                vloss_cf_min = vloss_cf
-                epoch_min = i
-                # best_weights_mf = copy.deepcopy(self.model_cf.model.get_weights())
-                # best_weights_cs = copy.deepcopy(self.model_md.model.get_weights())
-            else:
-                if self.verbose > 0 or True:
-                    print('Valloss {:.4f} at epoch {}'.format(vloss_cf, i + 1))
-
-                if i >= epoch_min + patience:
-                    print('Stopping crosstraining after epoch {}'.format(i + 1))
-                    break
-
-            if i + 1 >= self.config.xtrain_max_epochs:
-                break
-
-        # Set weights of best epoch
-        # self.model_cf.model.set_weights(best_weights_mf)
-        # self.model_md.model.set_weights(best_weights_cs)
+        # Get data from MD to train CF
+        self._step_md_cf()
 
     def _step_md_cf(self):
+
         # Get indices for cross training from sampling distribution
         inds_u_x, inds_i_x = self.index_sampler.get_indices_from_md()
 
@@ -204,12 +164,12 @@ class HybridModel:
         y_x = self.model_md.model.predict([inds_u_x, inds_i_x])
 
         # Recompute implicit matrix
-        self.model_cf.recompute_implicit([inds_u_x, inds_i_x], y_x, thresh=0.7)
+        self.model_cf.recompute_implicit([inds_u_x, inds_i_x], y_x, transformed_data=True)
 
         # Combine data with original training data
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
 
-        # Update-train MF model with cross-train data
+        # Update-train CF model with cross-train data
         history = self.model_cf.model.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_cf,
                                           epochs=150, validation_split=self.config.val_split_xtrain, verbose=self.verbose,
                                           callbacks=self.callbacks_cf)
@@ -218,6 +178,7 @@ class HybridModel:
         return min(history.history['val_loss'])
 
     def _step_cf_md(self):
+
         # Get indices for cross training from sampling distribution
         inds_u_x, inds_i_x = self.index_sampler.get_indices_from_cf()
 
@@ -227,7 +188,7 @@ class HybridModel:
         # Combine data with original training data
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
 
-        # Update-train ANN model with cross-train data
+        # Update-train MD model with cross-train data
         history = self.model_md.model.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_md,
                                           epochs=150, validation_split=self.config.val_split_xtrain, verbose=self.verbose,
                                           callbacks=self.callbacks_md)
@@ -235,39 +196,39 @@ class HybridModel:
         # Return best validation loss
         return min(history.history['val_loss'])
 
-    def test_cf(self, x_test, y_test, prnt=False):
-        y_pred = self.model_cf.predict(x_test)
-
-        result = evaluation.EvaluationResultPart()
-        for measure, metric in evaluation.metrics_rmse.items():
-            result.results[measure] = metric.calculate(y_test, y_pred, x_test)
-
-        if prnt:
-            print('CF: ', result)
-
-        return result
-
-    def test_md(self, x_test, y_test, prnt=False):
-        y_pred = self.model_md.predict(x_test)
-
-        result = evaluation.EvaluationResultPart()
-        for measure, metric in evaluation.metrics_rmse.items():
-            result.results[measure] = metric.calculate(y_test, y_pred, x_test)
-
-        if prnt:
-            print('MD: ', result)
-
-        return result
-
-    def test(self, x_test, y_test, prnt=False):
-        result = evaluation.EvaluationResultPart()
-
-        if prnt:
-            print('Results of testing:')
-        result.model_mf = self.test_cf(x_test, y_test, prnt)
-        result.model_cs = self.test_md(x_test, y_test, prnt)
-
-        return result
+    # def test_cf(self, x_test, y_test, prnt=False):
+    #     y_pred = self.model_cf.predict(x_test)
+    #
+    #     result = evaluation.EvaluationResultPart()
+    #     for measure, metric in evaluation.metrics_rmse.items():
+    #         result.results[measure] = metric.calculate(y_test, y_pred, x_test)
+    #
+    #     if prnt:
+    #         print('CF: ', result)
+    #
+    #     return result
+    #
+    # def test_md(self, x_test, y_test, prnt=False):
+    #     y_pred = self.model_md.predict(x_test)
+    #
+    #     result = evaluation.EvaluationResultPart()
+    #     for measure, metric in evaluation.metrics_rmse.items():
+    #         result.results[measure] = metric.calculate(y_test, y_pred, x_test)
+    #
+    #     if prnt:
+    #         print('MD: ', result)
+    #
+    #     return result
+    #
+    # def test(self, x_test, y_test, prnt=False):
+    #     result = evaluation.EvaluationResultPart()
+    #
+    #     if prnt:
+    #         print('Results of testing:')
+    #     result.model_mf = self.test_cf(x_test, y_test, prnt)
+    #     result.model_cs = self.test_md(x_test, y_test, prnt)
+    #
+    #     return result
 
     def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=True):
 

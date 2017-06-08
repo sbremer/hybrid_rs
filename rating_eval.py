@@ -1,18 +1,13 @@
 import pickle
-import numpy as np
 
-# np.random.seed(0)
-
-# Local imports
-from hybrid_model.hybrid import HybridModel, HybridConfig
-from hybrid_model import transform
-from hybrid_model.index_sampler import IndexSampler2, IndexSamplerUserbased
 from hybrid_model.evaluation import EvaluationResults, EvaluationResultsModel
-from hybrid_model.evaluation_parting import stats_user, stats_item
-import util
 
-from hybrid_model.baselines import BaselineSVD, BiasEstimator, BaselineBias
-from hybrid_model.callbacks_custom import EarlyStoppingBestVal
+import util
+from hybrid_model import transform
+from hybrid_model.baselines import BaselineBias
+from hybrid_model.hybrid import HybridConfig
+from hybrid_model.index_sampler import IndexSamplerUserbased
+from util.callbacks_custom import EarlyStoppingBestVal
 
 (inds_u, inds_i, y, users_features, items_features) = pickle.load(open('data/ml100k.pickle', 'rb'))
 

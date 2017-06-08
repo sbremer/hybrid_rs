@@ -1,10 +1,10 @@
-import numpy as np
 from typing import Dict, List
 
-# Local imports
+import numpy as np
+
 import hybrid_model
-from hybrid_model import evaluation_parting
-from hybrid_model import evaluation_metrics
+from evaluation import evaluation_metrics
+from evaluation import evaluation_parting
 
 metrics_rmse = {'rmse': evaluation_metrics.Rmse()}
 

@@ -1,6 +1,7 @@
-from eval_script import evaluate_models_single, evaluate_models_xval, print_results, EvalModel
 from hybrid_model.evaluation import Evaluation
-from hybrid_model import evaluation_metrics
+
+from eval_script import evaluate_models_xval, print_results, EvalModel
+from evaluation import evaluation_metrics
 from hybrid_model.dataset import get_dataset
 
 """
@@ -65,24 +66,28 @@ l2
 # config = dict(n_factors=35, reg_bias=0.00002, reg_latent=0.00002)
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-# SVD++
-from hybrid_model.baselines import BaselineSVDpp
-model_type = BaselineSVDpp
-config = dict(n_factors=35, reg_bias=0.00001, reg_latent=0.00003, implicit_thresh=3.5)
-models.append(EvalModel(model_type.__name__, model_type, config))
+# # SVD++
+# from hybrid_model.baselines import BaselineSVDpp
+# model_type = BaselineSVDpp
+# config = dict(n_factors=35, reg_bias=0.00001, reg_latent=0.00003, implicit_thresh=3.5)
+# models.append(EvalModel(model_type.__name__, model_type, config))
 
 # from hybrid_model.baselines import AttributeBias
 # model_type = AttributeBias
 # config = dict(reg_att_bias=0.0015, reg_bias=0.00005)
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-# from hybrid_model.baselines import AttributeBiasExperimental
-# model_type = AttributeBiasExperimental
-# config = dict(reg_bias=0.000003, reg_att_bias=0.000005)
-# models.append(EvalModel(model_type.__name__, model_type, config))
+from hybrid_model.models import AttributeBiasExperimental
+model_type = AttributeBiasExperimental
+config = dict(reg_bias=0.000003, reg_att_bias=0.000005)
+models.append(EvalModel(model_type.__name__, model_type, config))
 
 metrics = {'rmse': evaluation_metrics.Rmse(), 'prec@5': evaluation_metrics.Precision(5)}
 evaluation = Evaluation(metrics)
+
+# results = evaluate_models_xval(dataset, models, user_coldstart=False, evaluation=evaluation)
+# print('Normal')
+# print_results(results)
 
 # results = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=0, evaluation=evaluation)
 # print('Coldstart0')
@@ -106,6 +111,3 @@ ml1m
 
 """
 
-# results = evaluate_models_xval(dataset, models, user_coldstart=False, evaluation=evaluation)
-# print('Normal')
-# print_results(results)

@@ -1,4 +1,5 @@
 import pickle
+
 import numpy as np
 
 np.random.seed(0)
@@ -7,7 +8,7 @@ np.random.seed(0)
 from hybrid_model.hybrid import HybridModel, HybridConfig
 from hybrid_model import transform
 from hybrid_model.index_sampler import IndexSamplerUserbased
-from hybrid_model.evaluation import EvaluationResults
+from evaluation.evaluation import EvaluationResults
 import util
 
 (inds_u, inds_i, y, users_features, items_features) = pickle.load(open('data/ml100k.pickle', 'rb'))
@@ -85,10 +86,10 @@ for i, config in enumerate(param_grid):
         # Create model
         model = HybridModel(users_features, items_features, hybrid_config, verbose=0)
 
-        model.fit_init_only([inds_u_train, inds_i_train], y_train)
+        model.fit_init([inds_u_train, inds_i_train], y_train)
         result_before_xtrain = model.evaluate([inds_u_test, inds_i_test], y_test)
 
-        model.fit_xtrain_only([inds_u_train, inds_i_train], y_train)
+        model.fit_cross([inds_u_train, inds_i_train], y_train)
         result_after_xtrain = model.evaluate([inds_u_test, inds_i_test], y_test)
 
         print(result_after_xtrain)

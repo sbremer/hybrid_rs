@@ -1,8 +1,8 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from hybrid_model.evaluation import EvaluationResults
-from hybrid_model.evaluation import n_bins
+from evaluation.evaluation import EvaluationResults
+from evaluation.evaluation import n_bins
 
 results_before_xtrain: EvaluationResults
 results_after_xtrain: EvaluationResults

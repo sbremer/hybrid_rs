@@ -1,6 +1,4 @@
-from eval_script import evaluate_models_single, evaluate_models_xval, print_results, EvalModel
-from hybrid_model.evaluation import Evaluation
-from hybrid_model import evaluation_metrics
+from eval_script import evaluate_models_xval, evaluate_models_single, print_results, EvalModel
 from hybrid_model.dataset import get_dataset
 
 # Get dataset
@@ -16,7 +14,7 @@ model_type = HybridModel
 config = hybrid_config
 models.append(EvalModel(model_type.__name__, model_type, config))
 
-results = evaluate_models_xval(dataset, models, user_coldstart=False)
+results = evaluate_models_single(dataset, models, user_coldstart=False)
 print('Normal')
 print_results(results)
 

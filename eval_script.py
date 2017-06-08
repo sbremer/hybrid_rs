@@ -1,16 +1,15 @@
-import pickle
-import numpy as np
 from typing import NamedTuple, List, Dict, Tuple, Type
+
+import numpy as np
 
 np.random.seed(0)
 
 # Local imports
 from hybrid_model.hybrid import HybridModel
-from hybrid_model.evaluation import Evaluation, EvaluationResult, EvaluationResultHybrid, EvaluationResults, EvaluationResultsHybrid
+from evaluation.evaluation import Evaluation, EvaluationResult, EvaluationResultHybrid
 from hybrid_model.models import AbstractModel, AbstractModelCF, AbstractModelMD
 from hybrid_model.dataset import Dataset
-import util
-
+from util import kfold
 
 class EvalModel(NamedTuple):
     name: str
@@ -21,10 +20,10 @@ class EvalModel(NamedTuple):
 def _analyze_hybrid(hybrid_model, evaluation: Evaluation, train, test)\
         -> Tuple[EvaluationResultHybrid, EvaluationResultHybrid]:
 
-    hybrid_model.fit_init_only(*train)
+    hybrid_model.fit_init(*train)
     result_before_x = evaluation.evaluate_hybrid(hybrid_model, *test)
 
-    hybrid_model.fit_xtrain_only()
+    hybrid_model.fit_cross()
     result_after_x = evaluation.evaluate_hybrid(hybrid_model, *test)
 
     return result_before_x, result_after_x
@@ -43,13 +42,13 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
     n_fold = 5
     if user_coldstart:
         if n_entries == 0:
-            kfold = util.kfold_entries(n_fold, inds_u)
+            fold = kfold.kfold_entries(n_fold, inds_u)
         else:
-            kfold = util.kfold_entries_plus(n_fold, inds_u, n_entries)
+            fold = kfold.kfold_entries_plus(n_fold, inds_u, n_entries)
     else:
-        kfold = util.kfold(n_fold, inds_u)
+        fold = kfold.kfold(n_fold, inds_u)
 
-    kfold = list(kfold)
+    fold = list(fold)
 
     if evaluation is None:
         evaluation = Evaluation()
@@ -64,8 +63,8 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
         else:
             raise TypeError('Invalid model_type')
 
-    for xval_train, xval_test in kfold:
-        xval_train, xval_test = kfold[0]
+    for xval_train, xval_test in fold:
+        # xval_train, xval_test = kfold[0]
 
         # Dataset training
         inds_u_train = inds_u[xval_train]
@@ -113,15 +112,15 @@ def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_colds
     n_fold = 5
     if user_coldstart:
         if n_entries == 0:
-            kfold = util.kfold_entries(n_fold, inds_u)
+            fold = kfold.kfold_entries(n_fold, inds_u)
         else:
-            kfold = util.kfold_entries_plus(n_fold, inds_u, n_entries)
+            fold = kfold.kfold_entries_plus(n_fold, inds_u, n_entries)
     else:
-        kfold = util.kfold(n_fold, inds_u)
+        fold = kfold.kfold(n_fold, inds_u)
 
-    kfold = list(kfold)
+    fold = list(fold)
 
-    xval_train, xval_test = kfold[0]
+    xval_train, xval_test = fold[3]
 
     # Dataset training
     inds_u_train = inds_u[xval_train]
