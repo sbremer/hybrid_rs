@@ -2,6 +2,7 @@ from typing import NewType, NamedTuple, List, Type, Dict
 
 import numpy as np
 from keras.optimizers import Optimizer
+from keras.callbacks import EarlyStopping
 
 from hybrid_model.index_sampler import IndexSampler
 from hybrid_model.models import AbstractModelCF, AbstractModelMD
@@ -66,8 +67,8 @@ class HybridModel:
         self.model_md = type_md(meta_users, meta_items, config_md, transformation)
 
         # Callbacks for early stopping during one cross-trainin iteration
-        self.callbacks_cf = [EarlyStoppingBestVal('val_loss', patience=4)]
-        self.callbacks_md = [EarlyStoppingBestVal('val_loss', patience=4)]
+        self.callbacks_cf = [EarlyStopping('val_loss', patience=0)]
+        self.callbacks_md = [EarlyStopping('val_loss', patience=0)]
 
         # Init to be training data
         self.x_train: List[Matrix] = None
@@ -115,11 +116,11 @@ class HybridModel:
     def _train_init(self):
 
         # Initial early stopping callbacks
-        callbacks_cf = [EarlyStoppingBestVal('val_loss', patience=10)]
-        callbacks_md = [EarlyStoppingBestVal('val_loss', patience=10)]
+        callbacks_cf = [EarlyStoppingBestVal('val_loss', patience=5)]
+        callbacks_md = [EarlyStoppingBestVal('val_loss', patience=5)]
 
         # Compute implicit matrix for matrix factorization
-        self.model_cf.recompute_implicit(self.x_train, self.y_train, transformed_data=True)
+        self.model_cf.recompute_implicit(self.x_train, self.y_train, transformed=True)
 
         # Train both models with the training data only
         self.model_cf.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_cf, epochs=200,
@@ -164,7 +165,7 @@ class HybridModel:
         y_x = self.model_md.model.predict([inds_u_x, inds_i_x])
 
         # Recompute implicit matrix
-        self.model_cf.recompute_implicit([inds_u_x, inds_i_x], y_x, transformed_data=True)
+        self.model_cf.recompute_implicit([inds_u_x, inds_i_x], y_x, transformed=True, crosstrain=True)
 
         # Combine data with original training data
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)

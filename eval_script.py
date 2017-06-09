@@ -36,19 +36,23 @@ def _analyze_model(model, evaluation: Evaluation, train, test)\
     return result
 
 
-def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0, evaluation=None):
+def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0, evaluation=None, repeat=1):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
-    n_fold = 5
-    if user_coldstart:
-        if n_entries == 0:
-            fold = kfold.kfold_entries(n_fold, inds_u)
-        else:
-            fold = kfold.kfold_entries_plus(n_fold, inds_u, n_entries)
-    else:
-        fold = kfold.kfold(n_fold, inds_u)
+    folds = []
 
-    fold = list(fold)
+    n_fold = 5
+
+    for _ in range(repeat):
+        if user_coldstart:
+            if n_entries == 0:
+                fold = kfold.kfold_entries(n_fold, inds_u)
+            else:
+                fold = kfold.kfold_entries_plus(n_fold, inds_u, n_entries)
+        else:
+            fold = kfold.kfold(n_fold, inds_u)
+
+        folds.extend(list(fold))
 
     if evaluation is None:
         evaluation = Evaluation()
@@ -63,7 +67,7 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
         else:
             raise TypeError('Invalid model_type')
 
-    for xval_train, xval_test in fold:
+    for xval_train, xval_test in folds:
         # xval_train, xval_test = kfold[0]
 
         # Dataset training

@@ -1,6 +1,6 @@
-from hybrid_model.evaluation import Evaluation
+from evaluation.evaluation import Evaluation
 
-from eval_script import evaluate_models_xval, print_results, EvalModel
+from eval_script import evaluate_models_xval, evaluate_models_single, print_results, EvalModel
 from evaluation import evaluation_metrics
 from hybrid_model.dataset import get_dataset
 
@@ -34,8 +34,8 @@ rmse: 0.9785 ± 0.0004
 """
 
 # Get dataset
-# dataset = get_dataset('ml100k')
-dataset = get_dataset('ml1m')
+dataset = get_dataset('ml100k')
+# dataset = get_dataset('ml1m')
 
 models = []
 
@@ -72,6 +72,22 @@ l2
 # config = dict(n_factors=35, reg_bias=0.00001, reg_latent=0.00003, implicit_thresh=3.5)
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
+from itertools import product
+def generate_mini_grid(base_values, factor):
+    n = len(base_values)
+
+    params = []
+
+    for base_value in base_values:
+        x_m = base_value / factor
+        x_p = base_value * factor
+
+        params.append( (x_m, base_value, x_p) )
+
+    return product(*params)
+
+
+
 # from hybrid_model.baselines import AttributeBias
 # model_type = AttributeBias
 # config = dict(reg_att_bias=0.0015, reg_bias=0.00005)
@@ -79,15 +95,38 @@ l2
 
 from hybrid_model.models import AttributeBiasExperimental
 model_type = AttributeBiasExperimental
-config = dict(reg_bias=0.000003, reg_att_bias=0.000005)
-models.append(EvalModel(model_type.__name__, model_type, config))
+
+base_values = [0.0001, 0.0002]
+factor = 1.5
+param_grid = generate_mini_grid(base_values, factor)
+for a, b in param_grid:
+    config = dict(reg_bias=a, reg_att_bias=b)
+    models.append(EvalModel(model_type.__name__+str(config), model_type, config))
+
+# Best: 0.92726911765
+# AttributeBiasExperimental{'reg_bias': 2.4e-05, 'reg_att_bias': 8.333333333333334e-05}
+# Best: 1.01649914531
+# AttributeBiasExperimental{'reg_bias': 9.999999999999999e-05, 'reg_att_bias': 0.0002}
+
+# rmse: 0.9391 @ dict(reg_bias=0.00002, reg_att_bias=0.0004)
 
 metrics = {'rmse': evaluation_metrics.Rmse(), 'prec@5': evaluation_metrics.Precision(5)}
 evaluation = Evaluation(metrics)
 
-# results = evaluate_models_xval(dataset, models, user_coldstart=False, evaluation=evaluation)
-# print('Normal')
-# print_results(results)
+results = evaluate_models_xval(dataset, models, user_coldstart=True, evaluation=evaluation, repeat=1)
+print('Normal')
+print_results(results)
+
+name_min = ''
+rmse_min = 1e10
+for name, result in results:
+    rmse = result.rmse()
+    if rmse < rmse_min:
+        rmse_min = rmse
+        name_min = name
+
+print('Best:', rmse_min)
+print(name_min)
 
 # results = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=0, evaluation=evaluation)
 # print('Coldstart0')
@@ -97,9 +136,9 @@ evaluation = Evaluation(metrics)
 # print('Coldstart10')
 # print_results(results)
 #
-results = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=50, evaluation=evaluation)
-print('Coldstart30')
-print_results(results)
+# results = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=50, evaluation=evaluation)
+# print('Coldstart30')
+# print_results(results)
 
 """
 ml1m

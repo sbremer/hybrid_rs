@@ -99,6 +99,9 @@ class EvaluationResult:
 
         return s
 
+    def rmse(self):
+        return self.parts['full'].results['rmse']
+
 
 class EvaluationResultPart:
     def __init__(self):
@@ -161,6 +164,9 @@ class EvaluationResults:
             s += '\n'
 
         return s
+
+    def rmse(self):
+        return self.parts['full'].mean('rmse')
 
 
 class EvaluationResultsPart:

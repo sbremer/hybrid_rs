@@ -180,7 +180,9 @@ class SVDpp(AbstractModelCF):
         n_factors = self.config.get('n_factors', 35)
         reg_bias = l2(self.config.get('reg_bias', 0.00001))
         reg_latent = l2(self.config.get('reg_latent', 0.00003))
+
         self.implicit_thresh = self.config.get('implicit_thresh', 4.0)
+        self.implicit_thresh_crosstrain = self.config.get('implicit_thresh_crosstrain', 4.75)
 
         input_u = Input((1,))
         input_i = Input((1,))
@@ -217,12 +219,18 @@ class SVDpp(AbstractModelCF):
 
         self.compile()
 
-    def recompute_implicit(self, x, y, transformed_data=False):
+    def recompute_implicit(self, x, y, transformed=False, crosstrain=False):
 
-        if transformed_data:
-            thresh = self.transformation.transform(self.implicit_thresh)
+        if transformed:
+            if crosstrain:
+                thresh = self.transformation.transform(self.implicit_thresh_crosstrain)
+            else:
+                thresh = self.transformation.transform(self.implicit_thresh)
         else:
-            thresh = self.implicit_thresh
+            if crosstrain:
+                thresh = self.implicit_thresh_crosstrain
+            else:
+                thresh = self.implicit_thresh
 
         inds_u, inds_i = x
 
@@ -291,8 +299,11 @@ class AttributeBiasExperimental(AbstractModelMD):
     def __init__(self, meta_users, meta_items, config=None, transformation=TransformationLinear()):
         super().__init__(meta_users, meta_items, config, transformation)
 
-        reg_bias = l1(self.config.get('reg_bias', 0.000003))
-        reg_att_bias = l1(self.config.get('reg_att_bias', 0.000005))
+        # reg_bias = l1(self.config.get('reg_bias', 0.000003))
+        # reg_att_bias = l1(self.config.get('reg_att_bias', 0.000005))
+
+        reg_bias = l2(self.config.get('reg_bias', 0.0001))
+        reg_att_bias = l2(self.config.get('reg_att_bias', 0.0002))
 
         input_u = Input((1,))
         input_i = Input((1,))
@@ -346,7 +357,8 @@ class AttributeBiasExperimental(AbstractModelMD):
 
         # Normalize Genre matrix and set static weights
         meta_items = meta_items / np.maximum(1, np.sum(meta_items, axis=1)[:, None])
-        # meta_users = meta_users / np.maximum(1, np.sum(meta_users, axis=1)[:, None])
+        meta_users = meta_users / np.maximum(1, np.sum(meta_users, axis=1)[:, None])
+
         self.model.get_layer('users_features').set_weights([meta_users])
         self.model.get_layer('items_features').set_weights([meta_items])
 
