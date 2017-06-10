@@ -133,14 +133,11 @@ class EvaluationResultsHybrid:
 
         return s
 
-    def mean_rmse_mf(self):
-        """
-        Custom hacky function for Gridsearch
-        """
+    def mean_rmse_cf(self):
         rmse = self.cf.parts['full'].mean('rmse')
         return rmse
 
-    def mean_rmse_cs(self):
+    def mean_rmse_md(self):
         """
         Custom hacky function for Gridsearch
         """

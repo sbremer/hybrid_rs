@@ -150,11 +150,12 @@ class HybridModel:
 
     def fit_cross_epoch(self):
 
-        # Vice versa
-        self._step_cf_md()
+
 
         # Get data from MD to train CF
         self._step_md_cf()
+        # Vice versa
+        self._step_cf_md()
 
     def _step_md_cf(self):
 
