@@ -32,8 +32,8 @@ rmses_after_md = [1.0167254898540934, 0.97931326747856151, 0.96272001712716215, 
 
 rmses_after_hybrid = []
 
-for y1, y2 in zip(rmses_after_cf, rmses_after_md):
-    rmses_after_hybrid.append(min(y1, y2))
+for x_at, y1, y2 in zip(x, rmses_after_cf, rmses_after_md):
+    rmses_after_hybrid.append(y1 if x_at >=10 else y2)
 
 
 plt.plot(x, rmses_before_cf, label='CF')

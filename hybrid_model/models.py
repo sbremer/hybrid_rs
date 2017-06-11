@@ -6,7 +6,7 @@ from keras.models import Model
 from keras.regularizers import l1, l2
 
 from hybrid_model.transform import TransformationLinear
-from util.layers_custom import BiasLayer
+from util.layers_custom import BiasLayer, MultiplyVector
 from util.callbacks_custom import EarlyStoppingBestVal
 
 bias_init = Constant(0.5)
@@ -334,8 +334,9 @@ class AttributeBiasExperimental(AbstractModelMD):
         mult_u_if = Multiply()([u_if, vec_features_i])
 
         # Features User x Features Item
+        vec_features_i_adj = MultiplyVector()(vec_features_i)
         uf_if = Dense(self.n_users_features, kernel_initializer='zeros', activation='linear',
-                      kernel_regularizer=reg_att_bias, use_bias=False)(vec_features_i)
+                      kernel_regularizer=reg_att_bias, use_bias=False)(vec_features_i_adj)
 
         mult_uf_if = Multiply()([uf_if, vec_features_u])
 

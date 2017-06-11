@@ -16,77 +16,59 @@ config = hybrid_config
 models.append(EvalModel(model_type.__name__, model_type, config))
 
 """
+n_inds_from_md = 13696
+n_inds_from_md = 13831
+n_inds_from_md = 13835
+n_inds_from_md = 14016
+n_inds_from_md = 13747
 Normal
 ------- HybridModel
 Hybrid before xtrain:
 CF:
 Combined Results:
 === Part full
-rmse: 0.8992 ± 0.0035
+rmse: 0.8983 ± 0.0019
 MD:
 Combined Results:
 === Part full
-rmse: 0.9262 ± 0.0041
+rmse: 0.9286 ± 0.0047
 
 Hybrid after xtrain:
 CF:
 Combined Results:
 === Part full
-rmse: 0.8960 ± 0.0024
+rmse: 0.8964 ± 0.0023
 MD:
 Combined Results:
 === Part full
-rmse: 0.9239 ± 0.0044
+rmse: 0.9231 ± 0.0039
 
-
-Normal
-------- HybridModel
-Hybrid before xtrain:
-CF:
-Combined Results:
-=== Part full
-rmse: 0.8996 ± 0.0029
-MD:
-Combined Results:
-=== Part full
-rmse: 0.9259 ± 0.0040
-
-Hybrid after xtrain:
-CF:
-Combined Results:
-=== Part full
-rmse: 0.8962 ± 0.0017
-MD:
-Combined Results:
-=== Part full
-rmse: 0.9241 ± 0.0042
-
-n_inds_from_md = 27391
-n_inds_from_md = 27454
-n_inds_from_md = 27242
-n_inds_from_md = 27537
-n_inds_from_md = 26849
+n_inds_from_md = 27172
+n_inds_from_md = 27511
+n_inds_from_md = 27321
+n_inds_from_md = 27314
+n_inds_from_md = 27161
 Coldstart
 ------- HybridModel
 Hybrid before xtrain:
 CF:
 Combined Results:
 === Part full
-rmse: 1.0907 ± 0.0396
+rmse: 1.0893 ± 0.0083
 MD:
 Combined Results:
 === Part full
-rmse: 1.0204 ± 0.0489
+rmse: 1.0201 ± 0.0130
 
 Hybrid after xtrain:
 CF:
 Combined Results:
 === Part full
-rmse: 1.0232 ± 0.0491
+rmse: 1.0213 ± 0.0124
 MD:
 Combined Results:
 === Part full
-rmse: 1.0192 ± 0.0474
+rmse: 1.0172 ± 0.0129
 
 """
 
