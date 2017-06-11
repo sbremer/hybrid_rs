@@ -1,5 +1,5 @@
 ## hybrid_rs
-#Hybrid Recommender Systems Training Framework
+# Hybrid Recommender Systems Training Framework
 
 This repository contains the code to my research on recommender systems at Mercateo (<http://www.mercateo.com/>)
 
