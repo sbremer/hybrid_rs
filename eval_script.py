@@ -36,12 +36,11 @@ def _analyze_model(model, evaluation: Evaluation, train, test)\
     return result
 
 
-def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0, evaluation=None, repeat=1):
+def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0, evaluation=None,
+                         n_fold=5, repeat=1):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
     folds = []
-
-    n_fold = 5
 
     for _ in range(repeat):
         if user_coldstart:
@@ -110,10 +109,10 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
     return results
 
 
-def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0, evaluation=None):
+def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0,
+                           evaluation=None, n_fold=5):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
-    n_fold = 5
     if user_coldstart:
         if n_entries == 0:
             fold = kfold.kfold_entries(n_fold, inds_u)
