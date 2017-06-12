@@ -342,7 +342,7 @@ class AttributeBiasExperimental(AbstractModelMD):
 
         # Feature bias
         feature_concat = Concatenate()([vec_features_u, vec_features_i])
-        feature_bias = Dense(1, activation='linear', use_bias=False, kernel_regularizer=reg_att_bias)(
+        feature_bias = Dense(1, activation='linear', use_bias=False, kernel_initializer='zeros', kernel_regularizer=reg_att_bias)(
             feature_concat)
 
         # Features User x Item
@@ -375,7 +375,8 @@ class AttributeBiasExperimental(AbstractModelMD):
         # Combining
         concat = Concatenate()([bias_u, bias_i, mult_uf_i, mult_u_if, mult_uf_if, feature_bias])
 
-        cs_out = Dense(1, activation='linear', use_bias=True, bias_initializer=bias_init, name='bias')(concat)
+        cs_out = Dense(1, activation='linear', use_bias=True, kernel_initializer='ones',
+                       bias_initializer=bias_init, name='bias')(concat)
         # cs_out = BiasLayer(bias_initializer=bias_init, name='bias')(concat)
 
         self.model = Model(inputs=[input_u, input_i], outputs=cs_out)

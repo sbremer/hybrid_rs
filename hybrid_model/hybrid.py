@@ -68,8 +68,8 @@ class HybridModel:
         self.model_md = type_md(meta_users, meta_items, config_md, transformation)
 
         # Callbacks for early stopping during one cross-trainin iteration
-        self.callbacks_cf = [EarlyStoppingBestVal('val_loss', patience=0)]
-        self.callbacks_md = [EarlyStoppingBestVal('val_loss', patience=0)]
+        self.callbacks_cf = [EarlyStopping('val_loss', patience=0)]
+        self.callbacks_md = [EarlyStopping('val_loss', patience=0)]
 
         # Init to be training data
         self.x_train: List[Matrix] = None
@@ -109,7 +109,7 @@ class HybridModel:
         self._train_init()
 
     def setup_init_training(self):
-
+        pass
         # Compile model using optimizer used for initial training
         self.model_cf.compile(self.config.opt_cf_init)
         self.model_md.compile(self.config.opt_md_init)
@@ -147,8 +147,8 @@ class HybridModel:
                                                        self.config.index_sampler_config, self.x_train)
 
         # Recompile model using optimizer for cross-training
-        self.model_cf.compile(self.config.opt_cf_xtrain)
-        self.model_md.compile(self.config.opt_md_xtrain)
+        # self.model_cf.compile(self.config.opt_cf_xtrain)
+        # self.model_md.compile(self.config.opt_md_xtrain)
 
     def fit_cross_epoch(self):
 

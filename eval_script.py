@@ -161,7 +161,7 @@ def evaluate_models_single(dataset: Dataset, models: List[EvalModel],  coldstart
     for name, model_type, config in models:
 
         if issubclass(model_type, HybridModel):
-            model = model_type(users_features, items_features, config, verbose=2)
+            model = model_type(users_features, items_features, config)
             result = _analyze_hybrid(model, evaluation, train, test)
 
         elif issubclass(model_type, AbstractModelCF):

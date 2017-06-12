@@ -20,9 +20,9 @@ hybrid_config = HybridConfig(
     val_split_init=0.05,
     val_split_xtrain=0.05,
     index_sampler=index_sampler.IndexSamplerUserItembased,
-    index_sampler_config={'f_cf': 0.1, 'min_ratings_user': 35, 'f_user': 3.0, 'min_ratings_item': 10, 'f_item': 3.0},
+    index_sampler_config={'f_cf': 0.15, 'min_ratings_user': 35, 'f_user': 3.0, 'min_ratings_item': 10, 'f_item': 3.0},
     xtrain_epochs=4,
-    xtrain_data_shuffle=False,
+    xtrain_data_shuffle=True,
     transformation=transform.TransformationLinear
 )
 

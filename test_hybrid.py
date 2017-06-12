@@ -72,13 +72,13 @@ rmse: 1.0172 ± 0.0129
 
 """
 
-# results = evaluate_models_xval(dataset, models, coldstart=False)
-# print('Normal')
-# print_results(results)
+results = evaluate_models_xval(dataset, models, coldstart=False)
+print('Normal')
+print_results(results)
 
-# results = evaluate_models_xval(dataset, models, coldstart=True, cs_type='user')
-# print('Coldstart User')
-# print_results(results)
+results = evaluate_models_xval(dataset, models, coldstart=True, cs_type='user')
+print('Coldstart User')
+print_results(results)
 
 results = evaluate_models_single(dataset, models, coldstart=True, cs_type='item')
 print('Coldstart Item')
