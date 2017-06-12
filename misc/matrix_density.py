@@ -1,61 +1,93 @@
+import scripts
 import numpy as np
+import results.plots as lplot
 import matplotlib.pyplot as plt
-from scipy.misc import imresize
-from scipy.ndimage.filters import gaussian_filter
-import os
 
 from hybrid_model.dataset import get_dataset
-from hybrid_model.index_sampler import IndexSamplerUserbased
-
-os.chdir('../')
+from hybrid_model.index_sampler import IndexSamplerUserItembased as IndexSampler
 
 dataset = get_dataset('ml100k')
 (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
-mat = np.zeros((dataset.n_users, dataset.n_items), np.float)
+# mat = np.zeros((dataset.n_users, dataset.n_items), np.float)
+#
+# for u, i in zip(inds_u, inds_i):
+#     mat[u, i] = 1.0
+#
+# # Get user/item distributions and order
+# dist_users = np.sum(mat, axis=1).astype(np.int)
+# dist_items = np.sum(mat, axis=0).astype(np.int)
 
-for u, i in zip(inds_u, inds_i):
-    mat[u, i] = 1.0
+user_dist = np.bincount(inds_u, minlength=dataset.n_users)
+item_dist = np.bincount(inds_i, minlength=dataset.n_items)
 
-# Get user/item distributions and order
-dist_users = np.sum(mat, axis=1).astype(np.int)
-dist_items = np.sum(mat, axis=0).astype(np.int)
+order_users = np.argsort(-user_dist)
+order_items = np.argsort(-item_dist)
 
-order_users = np.argsort(-dist_users)
-order_items = np.argsort(-dist_items)
-
-dist_users = dist_users[order_users]
-dist_items = dist_items[order_items]
+dist_users = user_dist[order_users]
+dist_items = item_dist[order_items]
 
 inds_u = np.argsort(order_users)[inds_u]
 inds_i = np.argsort(order_items)[inds_i]
 
 # Index sampling
-sampler = IndexSamplerUserbased(dist_users, dist_items, [inds_u, inds_i])
-from_mf = sampler.get_indices_from_cf()
-from_cs = sampler.get_indices_from_md()
+sampler = IndexSampler(dist_users, dist_items, [inds_u, inds_i])
+from_cf = sampler.get_indices_from_cf()
+from_md = sampler.get_indices_from_md()
+
+from_cf = (from_cf[0].flatten(), from_cf[1].flatten())
+from_md = (from_md[0].flatten(), from_md[1].flatten())
 
 # Actual painting
-img = np.ones((dataset.n_users, dataset.n_items, 3), np.float)
-
-bs = 3
-
+# img = np.ones((dataset.n_users, dataset.n_items, 3), np.float)
+# bs = 3
 # for u, i in zip(inds_u, inds_i):
 #     img[u-bs:u+bs, i-bs:i+bs, :] = 0.0
-
-bs = 2
-
+# bs = 2
 # Paint samples
-for u, i in zip(*from_mf):
-    img[u-bs:u+bs, i-bs:i+bs, :] = np.array([0, 1, 0])
+# for u, i in zip(*from_cf):
+#     img[u-bs:u+bs, i-bs:i+bs, :] = np.array([0, 1, 0])
+#
+# for u, i in zip(*from_md):
+#     img[u-bs:u+bs, i-bs:i+bs, :] = np.array([1, 0, 0])
+#
+#
+# img = imresize(img, 1.0)
+# for c in range(3):
+#     img[:, :, c] = gaussian_filter(img[:, :, c], 1)
 
-for u, i in zip(*from_cs):
-    img[u-bs:u+bs, i-bs:i+bs, :] = np.array([1, 0, 0])
+# plt.imshow(img)
 
+# mat = np.zeros((dataset.n_users, dataset.n_items), np.float)
+#
+# for u, i in zip(inds_u, inds_i):
+#     mat[u, i] = 1.0
+#
+#
+# bs = 1
+# mat = np.ones((dataset.n_users, dataset.n_items), np.float) * 0.5
+# for u, i in zip(from_cf[0], from_cf[1]):
+#     mat[u-bs:u+bs, i-bs:i+bs] = 1.0
+#
+# for u, i in zip(from_md[0], from_md[1]):
+#     mat[u-bs:u+bs, i-bs:i+bs] = 0.0
+#
+# from scipy.ndimage.filters import gaussian_filter
+#
+# mat = gaussian_filter(mat, 1)
+#
+# im = plt.imshow(mat.transpose(), interpolation='sinc', origin='lower', cmap='bwr')
+# plt.scatter(from_cf[1], from_cf[0], s=1, marker='_', alpha=0.7)
+# plt.scatter(from_md[1], from_md[0], s=1, marker='|', alpha=0.7)
+# plt.show()
 
-img = imresize(img, 1.0)
-for c in range(3):
-    img[:, :, c] = gaussian_filter(img[:, :, c], 1)
+fig, ax = lplot.newfig(0.9)
 
-plt.imshow(img)
-plt.show()
+plt.style.use('acm-1col')
+ax.scatter(from_cf[0], from_cf[1], s=0.02, marker='_', label='$S_{CF}$', alpha=0.5)
+ax.scatter(from_md[0], from_md[1], s=0.02, marker='|', label='$S_{MD}$', alpha=0.5)
+ax.set_xlabel('User by \#ratings')
+ax.set_ylabel('Item by \#ratings')
+# ax.legend()
+lplot.savefig('sampling')
+# plt.show()
