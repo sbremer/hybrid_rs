@@ -34,6 +34,7 @@ class HybridConfig(NamedTuple):
     val_split_xtrain: float
 
     index_sampler: Type[IndexSampler]
+    index_sampler_config: Dict
 
     xtrain_epochs: int
     xtrain_data_shuffle: bool
@@ -67,8 +68,8 @@ class HybridModel:
         self.model_md = type_md(meta_users, meta_items, config_md, transformation)
 
         # Callbacks for early stopping during one cross-trainin iteration
-        self.callbacks_cf = [EarlyStopping('val_loss', patience=0)]
-        self.callbacks_md = [EarlyStopping('val_loss', patience=0)]
+        self.callbacks_cf = [EarlyStoppingBestVal('val_loss', patience=0)]
+        self.callbacks_md = [EarlyStoppingBestVal('val_loss', patience=0)]
 
         # Init to be training data
         self.x_train: List[Matrix] = None
@@ -142,7 +143,8 @@ class HybridModel:
     def setup_cross_training(self):
 
         # Init Index Sampler
-        self.index_sampler = self.config.index_sampler(self.user_dist, self.item_dist, self.x_train)
+        self.index_sampler = self.config.index_sampler(self.user_dist, self.item_dist,
+                                                       self.config.index_sampler_config, self.x_train)
 
         # Recompile model using optimizer for cross-training
         self.model_cf.compile(self.config.opt_cf_xtrain)
@@ -150,10 +152,9 @@ class HybridModel:
 
     def fit_cross_epoch(self):
 
-
-
         # Get data from MD to train CF
         self._step_md_cf()
+
         # Vice versa
         self._step_cf_md()
 

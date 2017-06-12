@@ -69,14 +69,20 @@ class Ndcg(Metric):
         for i, user in enumerate(users):
             user_i = (inds_u == user).flatten()
 
-            if np.sum(user_i) <= self.k:
-                continue
-
             y_true_u = y_true[user_i]
             y_pred_u = y_pred[user_i]
 
             sort_true = np.argsort(-y_true_u)
             sort_pred = np.argsort(-y_pred_u)
+
+            pred = list(sort_pred[:self.k])
+            true = list(sort_true[:self.k])
+
+            for r in sort_true[self.k:]:
+                if y_true_u[r] == y_true_u[true[-1]]:
+                    true.append(r)
+                else:
+                    break
 
             r = [int(a in sort_true[:self.k]) for a in sort_pred[:self.k]]
 

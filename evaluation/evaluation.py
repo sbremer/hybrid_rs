@@ -154,7 +154,7 @@ class EvaluationResults:
             self.parts[part].add(result.parts[part])
 
     def __str__(self):
-        s = 'Combined Results: \n'
+        s = ''
         for part, result in self.parts.items():
             s += '=== Part {}\n'.format(part)
             s += str(result)

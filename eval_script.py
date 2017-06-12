@@ -36,18 +36,25 @@ def _analyze_model(model, evaluation: Evaluation, train, test)\
     return result
 
 
-def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0, evaluation=None,
-                         n_fold=5, repeat=1):
+def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], coldstart=False, cs_type='user', n_entries=0,
+                         evaluation=None, n_fold=5, repeat=1):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
     folds = []
 
     for _ in range(repeat):
-        if user_coldstart:
+        if coldstart and cs_type == 'user':
             if n_entries == 0:
                 fold = kfold.kfold_entries(n_fold, inds_u)
             else:
                 fold = kfold.kfold_entries_plus(n_fold, inds_u, n_entries)
+        elif coldstart and cs_type == 'item':
+            if n_entries == 0:
+                fold = kfold.kfold_entries(n_fold, inds_i)
+            else:
+                fold = kfold.kfold_entries_plus(n_fold, inds_i, n_entries)
+        elif coldstart:
+            raise ValueError('unknown cs_type')
         else:
             fold = kfold.kfold(n_fold, inds_u)
 
@@ -109,21 +116,28 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], user_coldsta
     return results
 
 
-def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_coldstart=False, n_entries=0,
+def evaluate_models_single(dataset: Dataset, models: List[EvalModel],  coldstart=False, cs_type='user', n_entries=0,
                            evaluation=None, n_fold=5):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
-    if user_coldstart:
+    if coldstart and cs_type == 'user':
         if n_entries == 0:
             fold = kfold.kfold_entries(n_fold, inds_u)
         else:
             fold = kfold.kfold_entries_plus(n_fold, inds_u, n_entries)
+    elif coldstart and cs_type == 'item':
+        if n_entries == 0:
+            fold = kfold.kfold_entries(n_fold, inds_i)
+        else:
+            fold = kfold.kfold_entries_plus(n_fold, inds_i, n_entries)
+    elif coldstart:
+        raise ValueError('unknown cs_type')
     else:
         fold = kfold.kfold(n_fold, inds_u)
 
     fold = list(fold)
 
-    xval_train, xval_test = fold[3]
+    xval_train, xval_test = fold[0]
 
     # Dataset training
     inds_u_train = inds_u[xval_train]
@@ -147,7 +161,7 @@ def evaluate_models_single(dataset: Dataset, models: List[EvalModel], user_colds
     for name, model_type, config in models:
 
         if issubclass(model_type, HybridModel):
-            model = model_type(users_features, items_features, config)
+            model = model_type(users_features, items_features, config, verbose=2)
             result = _analyze_hybrid(model, evaluation, train, test)
 
         elif issubclass(model_type, AbstractModelCF):

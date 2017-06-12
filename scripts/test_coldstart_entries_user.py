@@ -1,4 +1,5 @@
-from eval_script import evaluate_models_xval, evaluate_models_single, print_results, EvalModel
+import scripts
+from eval_script import evaluate_models_xval, print_results, EvalModel
 from hybrid_model.dataset import get_dataset
 
 # Get dataset
@@ -24,7 +25,7 @@ rmses_after_cf = []
 rmses_after_md = []
 
 for entries_plus in params:
-    result = evaluate_models_xval(dataset, models, user_coldstart=True, n_entries=entries_plus, repeat=3)
+    result = evaluate_models_xval(dataset, models, coldstart=True, n_entries=entries_plus, repeat=3)
     results[entries_plus] = result
 
     rmses_before_cf.append(result[0][1][0].mean_rmse_cf())

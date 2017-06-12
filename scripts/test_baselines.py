@@ -10,11 +10,11 @@ dataset = get_dataset('ml100k')
 
 models = []
 
-# # Bias Baseline
-# from hybrid_model.models import BiasEstimator
-# model_type = BiasEstimator
-# config = {}
-# models.append(EvalModel(model_type.__name__, model_type, config))
+# Bias Baseline
+from hybrid_model.models import BiasEstimator
+model_type = BiasEstimator
+config = {}
+models.append(EvalModel(model_type.__name__, model_type, config))
 
 # SVD
 from hybrid_model.models import SVD
@@ -22,13 +22,13 @@ model_type = SVD
 config = {}
 models.append(EvalModel(model_type.__name__, model_type, config))
 
-results = evaluate_models_xval(dataset, models, user_coldstart=False)
+results = evaluate_models_xval(dataset, models, coldstart=False)
 print('Normal')
 print_results(results)
 
-# results = evaluate_models_xval(dataset, models, user_coldstart=True)
-# print('Coldstart')
-# print_results(results)
+results = evaluate_models_xval(dataset, models, coldstart=True)
+print('Coldstart User')
+print_results(results)
 
 """
 Normal
@@ -41,4 +41,13 @@ rmse: 0.9417 ± 0.0048
 Combined Results:
 === Part full
 rmse: 0.9250 ± 0.0044
+
+Coldstart User
+------- BiasEstimator
+=== Part full
+rmse: 1.0214 ± 0.0248
+
+------- SVD
+=== Part full
+rmse: 1.0340 ± 0.0234
 """

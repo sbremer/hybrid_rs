@@ -16,7 +16,7 @@ model_type = HybridModel
 config = hybrid_config
 models.append(EvalModel(model_type.__name__, model_type, config))
 
-results = evaluate_models_xval(dataset, models, user_coldstart=False, n_fold=10)
+results = evaluate_models_xval(dataset, models, coldstart=False, n_fold=10)
 print('Normal 10-fold')
 print_results(results)
 

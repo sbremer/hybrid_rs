@@ -2,9 +2,11 @@ import numpy as np
 
 
 class IndexSampler:
-    def __init__(self, user_dist, item_dist, x_train):
+    def __init__(self, user_dist, item_dist, config, x_train):
         self.n_users = len(user_dist)
         self.n_items = len(item_dist)
+
+        self.config = config
 
         # Create and fill entry lookup table
         self.lookup = {}
@@ -19,8 +21,8 @@ class IndexSampler:
 
 
 class IndexSamplerUserbased(IndexSampler):
-    def __init__(self, user_dist, item_dist, x_train):
-        super().__init__(user_dist, item_dist, x_train)
+    def __init__(self, user_dist, item_dist, config, x_train):
+        super().__init__(user_dist, item_dist, config, x_train)
 
         min_ratings = 40
 
@@ -91,22 +93,26 @@ class IndexSamplerUserbased(IndexSampler):
 
 
 class IndexSamplerUserItembased(IndexSampler):
-    def __init__(self, user_dist, item_dist, x_train):
-        super().__init__(user_dist, item_dist, x_train)
+    def __init__(self, user_dist, item_dist, config, x_train):
+        super().__init__(user_dist, item_dist, config, x_train)
 
-        min_ratings_user = 35
-        min_ratings_item = 10
+        default = {'f_cf': 0.1, 'min_ratings_user': 35, 'min_ratings_item': 10, 'f_user': 3.0, 'f_item': 1.0}
+        default.update(self.config)
+        self.config = default
 
-        factor_user = 3.0
-        factor_item = 0.5
+        min_ratings_user = self.config['min_ratings_user']
+        min_ratings_item = self.config['min_ratings_item']
+
+        f_user = self.config['f_user']
+        f_item = self.config['f_item']
 
         sample_users = user_dist <= min_ratings_user
         self.users_cs = np.arange(self.n_users)[sample_users]
-        self.user_dist_cs = (np.maximum(0, min_ratings_user - user_dist[sample_users]) * factor_user).astype(np.int)
+        self.user_dist_cs = (np.maximum(0, min_ratings_user - user_dist[sample_users]) * f_user).astype(np.int)
 
         sample_items = item_dist <= min_ratings_item
         self.items_cs = np.arange(self.n_items)[sample_items]
-        self.item_dist_cs = (np.maximum(0, min_ratings_item - item_dist[sample_items]) * factor_item).astype(np.int)
+        self.item_dist_cs = (np.maximum(0, min_ratings_item - item_dist[sample_items]) * f_item).astype(np.int)
 
         self.user_dist = user_dist
         self.item_dist = item_dist
@@ -119,7 +125,7 @@ class IndexSamplerUserItembased(IndexSampler):
         self.prob_from_md_user = user_dist / np.sum(user_dist)
         self.prob_from_md_item = item_dist / np.sum(item_dist)
 
-        self.n_inds_from_cf = int(len(x_train[0]) * 0.1)
+        self.n_inds_from_cf = int(len(x_train[0]) * self.config['f_cf'])
 
         self.n_inds_from_md = np.sum(self.user_dist_cs) + np.sum(self.item_dist_cs)
         print('n_inds_from_md = {}'.format(self.n_inds_from_md))
@@ -178,12 +184,12 @@ class IndexSamplerUserItembased(IndexSampler):
 
 class IndexSamplerUniform(IndexSampler):
 
-    def __init__(self, user_dist, item_dist, x_train, n_inds_from_cf, n_inds_from_md):
+    def __init__(self, user_dist, item_dist, config, x_train, n_inds_from_cf, n_inds_from_md):
         # Make sure this is called through a child class
         if self.__class__ == IndexSamplerUniform:
             raise NotImplementedError
 
-        super().__init__(user_dist, item_dist, x_train)
+        super().__init__(user_dist, item_dist, config, x_train)
 
         self.n_inds_from_cf = n_inds_from_cf
         self.n_inds_from_md = n_inds_from_md
@@ -233,8 +239,8 @@ class IndexSamplerUniform(IndexSampler):
 
 
 class IndexSampler1(IndexSamplerUniform):
-    def __init__(self, user_dist, item_dist, x_train, n_inds_from_cf, n_inds_from_md):
-        super().__init__(user_dist, item_dist, x_train, n_inds_from_cf, n_inds_from_md)
+    def __init__(self, user_dist, item_dist, config, x_train, n_inds_from_cf, n_inds_from_md):
+        super().__init__(user_dist, item_dist, config, x_train, n_inds_from_cf, n_inds_from_md)
 
         # Calculate sample probability
         self.prob_from_cf_user = user_dist / np.sum(user_dist)
@@ -248,8 +254,8 @@ class IndexSampler1(IndexSamplerUniform):
 
 
 class IndexSampler2(IndexSamplerUniform):
-    def __init__(self, user_dist, item_dist, x_train):
-        super().__init__(user_dist, item_dist, x_train, -1, -1)
+    def __init__(self, user_dist, item_dist, config, x_train):
+        super().__init__(user_dist, item_dist, config, x_train, -1, -1)
 
         # Calculate sample probability
         user_dist_adj_from_md = np.maximum(1, 25 - user_dist)

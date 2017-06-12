@@ -29,5 +29,5 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 metrics = {'rmse': evaluation_metrics.Rmse(), 'prec@5': evaluation_metrics.Precision(5)}
 evaluation = Evaluation(metrics)
 
-results = evaluate_models_xval(dataset, models, user_coldstart=False, evaluation=evaluation)
+results = evaluate_models_xval(dataset, models, coldstart=False, evaluation=evaluation)
 print_results(results)
