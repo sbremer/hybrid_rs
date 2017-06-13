@@ -26,14 +26,6 @@ class IndexSamplerUserbased(IndexSampler):
 
         min_ratings = 40
 
-        # 15: 0.8932
-        # 20: 0.8925
-        # 25: 0.8925
-        # 30: 0.8923
-        # 35: 0.8926
-        # 40: 0.8923
-        # 50: 0.8932
-
         sample_users = user_dist <= min_ratings
         self.users_cs = np.arange(self.n_users)[sample_users]
         self.user_dist_cs = np.maximum(0, min_ratings - user_dist[sample_users])*1
@@ -49,7 +41,7 @@ class IndexSamplerUserbased(IndexSampler):
 
         self.n_inds_from_cf = int(len(x_train[0]) * 0.15)
         self.n_inds_from_md = np.sum(self.user_dist_cs)
-        print('n_inds_from_md = {}'.format(self.n_inds_from_md))
+        # print('n_inds_from_md = {}'.format(self.n_inds_from_md))
 
     def get_indices_from_cf(self):
         inds_u = np.zeros((self.n_inds_from_cf,1), np.int)
@@ -128,7 +120,7 @@ class IndexSamplerUserItembased(IndexSampler):
         self.n_inds_from_cf = int(len(x_train[0]) * self.config['f_cf'])
 
         self.n_inds_from_md = np.sum(self.user_dist_cs) + np.sum(self.item_dist_cs)
-        print('n_inds_from_md = {}'.format(self.n_inds_from_md))
+        # print('n_inds_from_md = {}'.format(self.n_inds_from_md))
 
     def get_indices_from_cf(self):
         inds_u = np.zeros((self.n_inds_from_cf, 1), np.int)

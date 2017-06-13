@@ -8,8 +8,8 @@ from evaluation import evaluation_parting
 
 metrics_rmse = {'rmse': evaluation_metrics.Rmse()}
 
-metric_rmse_prec ={'rmse': evaluation_metrics.Rmse(),
-                   'prec@5': evaluation_metrics.Precision(5)}
+metrics_rmse_prec = {'rmse': evaluation_metrics.Rmse(),
+                     'prec@5': evaluation_metrics.Precision(5)}
 
 metrics_all = {'rmse': evaluation_metrics.Rmse(),
                'mae': evaluation_metrics.Mae(),
@@ -19,20 +19,20 @@ metrics_all = {'rmse': evaluation_metrics.Rmse(),
 parting_full = {'full': evaluation_parting.Full()}
 
 
-def get_parting_all(n_bins, user_dist, item_dist):
+def get_parting_all(n_bins):
     parting = {'full': evaluation_parting.Full()}
 
     parting.update({'user_{}'.format(i+1):
-                        evaluation_parting.BinningUser(n_bins, i, user_dist, item_dist) for i in range(n_bins)})
+                        evaluation_parting.BinningUser(n_bins, i) for i in range(n_bins)})
     parting.update({'item_{}'.format(i+1):
-                        evaluation_parting.BinningItem(n_bins, i, user_dist, item_dist) for i in range(n_bins)})
+                        evaluation_parting.BinningItem(n_bins, i) for i in range(n_bins)})
 
     return parting
 
 
 class Evaluation:
     def __init__(self,
-                 metrics: Dict[str, evaluation_metrics.Metric] = metric_rmse_prec,
+                 metrics: Dict[str, evaluation_metrics.Metric] = metrics_rmse_prec,
                  parts: Dict[str, evaluation_parting.Parting] = parting_full):
 
         self.metrics = metrics
@@ -72,6 +72,10 @@ class Evaluation:
 
     def get_results_hybrid_class(self):
         return EvaluationResultsHybrid(self.metrics, self.parts)
+
+    def update_parts(self, user_dist, item_dist):
+        for part in self.parts.keys():
+            self.parts[part].update(user_dist, item_dist)
 
 
 # === Single Evaluation Results

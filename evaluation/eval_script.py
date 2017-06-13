@@ -18,26 +18,26 @@ class EvalModel(NamedTuple):
     config: Dict
 
 
-def _analyze_hybrid(model: HybridModel, evaluation: Evaluation, train, test)\
+def _analyze_hybrid(model: HybridModel, evaluater: Evaluation, train, test)\
         -> Tuple[EvaluationResultHybrid, EvaluationResultHybrid]:
 
     model.fit_init(*train)
-    result_before_x = evaluation.evaluate_hybrid(model, *test)
+    result_before_x = evaluater.evaluate_hybrid(model, *test)
 
     model.fit_cross()
-    result_after_x = evaluation.evaluate_hybrid(model, *test)
+    result_after_x = evaluater.evaluate_hybrid(model, *test)
 
     return result_before_x, result_after_x
 
 
-def _analyze_hybrid_as_model(model: HybridModel, evaluation: Evaluation, train, test)\
+def _analyze_hybrid_as_model(model: HybridModel, evaluater: Evaluation, train, test)\
         -> Tuple[EvaluationResult, EvaluationResult, EvaluationResult]:
 
     model.fit_init(*train)
-    result_before_x = evaluation.evaluate_hybrid(model, *test)
+    result_before_x = evaluater.evaluate_hybrid(model, *test)
 
     model.fit_cross()
-    result_hybrid = evaluation.evaluate(model, *test)
+    result_hybrid = evaluater.evaluate(model, *test)
 
     return result_hybrid, result_before_x.cf, result_before_x.md
 
@@ -50,7 +50,7 @@ def _analyze_model(model, evaluation: Evaluation, train, test)\
 
 
 def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], coldstart=False, cs_type='user', n_entries=0,
-                         evaluation=None, n_fold=5, repeat=1):
+                         evaluater=None, n_fold=5, repeat=1):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
     folds = []
@@ -73,36 +73,38 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], coldstart=Fa
 
         folds.extend(list(fold))
 
-    if evaluation is None:
-        evaluation = Evaluation()
+    if evaluater is None:
+        evaluater = Evaluation()
 
     # Create results list
     results = {}
     for name, model_type, config in models:
         if issubclass(model_type, AbstractModel):
-            results[name] = evaluation.get_results_class()
+            results[name] = evaluater.get_results_class()
 
         elif issubclass(model_type, HybridModel):
-            results[name] = evaluation.get_results_class()
-            results[name + '_' + config.model_type_cf.__name__] = evaluation.get_results_class()
-            results[name + '_' + config.model_type_md.__name__] = evaluation.get_results_class()
+            results[name] = evaluater.get_results_class()
+            results[name + '_' + config.model_type_cf.__name__] = evaluater.get_results_class()
+            results[name + '_' + config.model_type_md.__name__] = evaluater.get_results_class()
 
         else:
             raise TypeError('Invalid model_type')
 
     for xval_train, xval_test in folds:
-        # xval_train, xval_test = kfold[0]
 
         # Dataset training
         inds_u_train = inds_u[xval_train]
         inds_i_train = inds_i[xval_train]
         y_train = y[xval_train]
-        n_train = len(y_train)
 
         # Dataset testing
         inds_u_test = inds_u[xval_test]
         inds_i_test = inds_i[xval_test]
         y_test = y[xval_test]
+
+        user_dist = np.bincount(inds_u_train, minlength=dataset.n_users)
+        item_dist = np.bincount(inds_i_train, minlength=dataset.n_items)
+        evaluater.update_parts(user_dist, item_dist)
 
         train = ([inds_u_train, inds_i_train], y_train)
         test = ([inds_u_test, inds_i_test], y_test)
@@ -111,17 +113,17 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], coldstart=Fa
 
             if issubclass(model_type, AbstractModelCF):
                 model = model_type(dataset.n_users, dataset.n_items, config)
-                result = _analyze_model(model, evaluation, train, test)
+                result = _analyze_model(model, evaluater, train, test)
                 results[name].add(result)
 
             elif issubclass(model_type, AbstractModelMD):
                 model = model_type(users_features, items_features, config)
-                result = _analyze_model(model, evaluation, train, test)
+                result = _analyze_model(model, evaluater, train, test)
                 results[name].add(result)
 
             elif issubclass(model_type, HybridModel):
                 model = model_type(users_features, items_features, config)
-                result_hybrid, result_cf, result_md = _analyze_hybrid_as_model(model, evaluation, train, test)
+                result_hybrid, result_cf, result_md = _analyze_hybrid_as_model(model, evaluater, train, test)
 
                 results[name].add(result_hybrid)
                 results[name + '_' + config.model_type_cf.__name__].add(result_cf)
@@ -130,8 +132,8 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], coldstart=Fa
     return results
 
 
-def evaluate_models_single(dataset: Dataset, models: List[EvalModel],  coldstart=False, cs_type='user', n_entries=0,
-                           evaluation=None, n_fold=5):
+def evaluate_models_single(dataset: Dataset, models: List[EvalModel], coldstart=False, cs_type='user', n_entries=0,
+                           evaluater=None, n_fold=5):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
     if coldstart and cs_type == 'user':
@@ -151,21 +153,24 @@ def evaluate_models_single(dataset: Dataset, models: List[EvalModel],  coldstart
 
     fold = list(fold)
 
-    xval_train, xval_test = fold[3]
+    xval_train, xval_test = fold[2]
 
     # Dataset training
     inds_u_train = inds_u[xval_train]
     inds_i_train = inds_i[xval_train]
     y_train = y[xval_train]
-    n_train = len(y_train)
 
     # Dataset testing
     inds_u_test = inds_u[xval_test]
     inds_i_test = inds_i[xval_test]
     y_test = y[xval_test]
 
-    if evaluation is None:
-        evaluation = Evaluation()
+    if evaluater is None:
+        evaluater = Evaluation()
+
+    user_dist = np.bincount(inds_u_train, minlength=dataset.n_users)
+    item_dist = np.bincount(inds_i_train, minlength=dataset.n_items)
+    evaluater.update_parts(user_dist, item_dist)
 
     train = ([inds_u_train, inds_i_train], y_train)
     test = ([inds_u_test, inds_i_test], y_test)
@@ -176,18 +181,18 @@ def evaluate_models_single(dataset: Dataset, models: List[EvalModel],  coldstart
 
         if issubclass(model_type, AbstractModelCF):
             model = model_type(dataset.n_users, dataset.n_items, config)
-            results[name] = _analyze_model(model, evaluation, train, test)
+            results[name] = _analyze_model(model, evaluater, train, test)
 
         elif issubclass(model_type, AbstractModelMD):
             model = model_type(users_features, items_features, config)
-            results[name] = _analyze_model(model, evaluation, train, test)
+            results[name] = _analyze_model(model, evaluater, train, test)
 
         elif issubclass(model_type, HybridModel):
             model = model_type(users_features, items_features, config)
             results[name],\
             results[name + '_' + config.model_type_cf.__name__],\
             results[name + '_' + config.model_type_md.__name__] = \
-                _analyze_hybrid_as_model(model, evaluation, train, test)
+                _analyze_hybrid_as_model(model, evaluater, train, test)
 
         else:
             raise TypeError('Invalid model_type')
@@ -196,7 +201,7 @@ def evaluate_models_single(dataset: Dataset, models: List[EvalModel],  coldstart
 
 
 def evaluate_hybrid_xval(dataset: Dataset, config, coldstart=False, cs_type='user', n_entries=0,
-                         evaluation=None, n_fold=5, repeat=1):
+                         evaluater=None, n_fold=5, repeat=1):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
     folds = []
@@ -219,15 +224,14 @@ def evaluate_hybrid_xval(dataset: Dataset, config, coldstart=False, cs_type='use
 
         folds.extend(list(fold))
 
-    if evaluation is None:
-        evaluation = Evaluation()
+    if evaluater is None:
+        evaluater = Evaluation()
 
     # Create results list
-    results_before = evaluation.get_results_hybrid_class()
-    results_after = evaluation.get_results_hybrid_class()
+    results_before = evaluater.get_results_hybrid_class()
+    results_after = evaluater.get_results_hybrid_class()
 
     for xval_train, xval_test in folds:
-        # xval_train, xval_test = kfold[0]
 
         # Dataset training
         inds_u_train = inds_u[xval_train]
@@ -240,12 +244,16 @@ def evaluate_hybrid_xval(dataset: Dataset, config, coldstart=False, cs_type='use
         inds_i_test = inds_i[xval_test]
         y_test = y[xval_test]
 
+        user_dist = np.bincount(inds_u_train, minlength=dataset.n_users)
+        item_dist = np.bincount(inds_i_train, minlength=dataset.n_items)
+        evaluater.update_parts(user_dist, item_dist)
+
         train = ([inds_u_train, inds_i_train], y_train)
         test = ([inds_u_test, inds_i_test], y_test)
 
         model = HybridModel(users_features, items_features, config)
 
-        result_before, result_after = _analyze_hybrid(model, evaluation, train, test)
+        result_before, result_after = _analyze_hybrid(model, evaluater, train, test)
 
         results_before.add(result_before)
         results_after.add(result_after)
@@ -254,7 +262,7 @@ def evaluate_hybrid_xval(dataset: Dataset, config, coldstart=False, cs_type='use
 
 
 def evaluate_hybrid_single(dataset: Dataset, config, coldstart=False, cs_type='user', n_entries=0,
-                         evaluation=None, n_fold=5):
+                           evaluater=None, n_fold=5):
     (inds_u, inds_i, y, users_features, items_features) = dataset.data
 
     if coldstart and cs_type == 'user':
@@ -274,28 +282,31 @@ def evaluate_hybrid_single(dataset: Dataset, config, coldstart=False, cs_type='u
 
     fold = list(fold)
 
-    xval_train, xval_test = fold[3]
+    xval_train, xval_test = fold[2]
 
-    if evaluation is None:
-        evaluation = Evaluation()
+    if evaluater is None:
+        evaluater = Evaluation()
 
     # Dataset training
     inds_u_train = inds_u[xval_train]
     inds_i_train = inds_i[xval_train]
     y_train = y[xval_train]
-    n_train = len(y_train)
 
     # Dataset testing
     inds_u_test = inds_u[xval_test]
     inds_i_test = inds_i[xval_test]
     y_test = y[xval_test]
 
+    user_dist = np.bincount(inds_u_train, minlength=dataset.n_users)
+    item_dist = np.bincount(inds_i_train, minlength=dataset.n_items)
+    evaluater.update_parts(user_dist, item_dist)
+
     train = ([inds_u_train, inds_i_train], y_train)
     test = ([inds_u_test, inds_i_test], y_test)
 
     model = HybridModel(users_features, items_features, config)
 
-    result_before, result_after = _analyze_hybrid(model, evaluation, train, test)
+    result_before, result_after = _analyze_hybrid(model, evaluater, train, test)
 
     return result_before, result_after
 

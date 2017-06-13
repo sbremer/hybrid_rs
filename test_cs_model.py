@@ -112,7 +112,7 @@ for a, b in param_grid:
 metrics = {'rmse': evaluation_metrics.Rmse(), 'prec@5': evaluation_metrics.Precision(5)}
 evaluation = Evaluation(metrics)
 
-results = evaluate_models_xval(dataset, models, coldstart=True, evaluation=evaluation, repeat=1)
+results = evaluate_models_xval(dataset, models, coldstart=True, evaluater=evaluation, repeat=1)
 print('Normal')
 print_results(results)
 
