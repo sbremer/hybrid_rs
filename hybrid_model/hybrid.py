@@ -212,6 +212,10 @@ class HybridModel:
         select_md = np.logical_or(self.user_dist[x[0][:]] < u_cut, self.item_dist[x[1][:]] < i_cut).flatten()
 
         y_cf = self.model_cf.predict(x)
+
+        if np.sum(select_md) == 0:
+            return y_cf
+
         y_md = self.model_md.predict([x[0][select_md, :], x[1][select_md, :]])
 
         y_cf[select_md] = y_md

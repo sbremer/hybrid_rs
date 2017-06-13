@@ -2,9 +2,9 @@ import pickle
 
 import numpy as np
 
-import hybrid_model_attbias
 import util
-from hybrid_model_attbias import HybridModel
+from archive import hybrid_model_attbias
+from archive.hybrid_model_attbias import HybridModel
 
 hybrid_model_attbias.verbose = 2
 

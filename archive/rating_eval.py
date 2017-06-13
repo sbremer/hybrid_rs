@@ -3,8 +3,8 @@ import pickle
 from hybrid_model.evaluation import EvaluationResults, EvaluationResultsModel
 
 import util
+from archive.baselines import BaselineBias
 from hybrid_model import transform
-from hybrid_model.baselines import BaselineBias
 from hybrid_model.hybrid import HybridConfig
 from hybrid_model.index_sampler import IndexSamplerUserbased
 from util.callbacks_custom import EarlyStoppingBestVal

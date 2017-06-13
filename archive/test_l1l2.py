@@ -54,7 +54,7 @@ models = []
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
 # SVD++
-from hybrid_model.baselines import BaselineSVDpp
+from archive.baselines import BaselineSVDpp
 model_type = BaselineSVDpp
 config = dict(n_factors=40, reg_bias=0.00004, reg_latent=0.00005, implicit_thresh=3.5)
 models.append(EvalModel(model_type.__name__, model_type, config))
