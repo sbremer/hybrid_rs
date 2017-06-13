@@ -8,7 +8,7 @@ from hybrid_model.config import hybrid_config as hybrid_config
 from hybrid_model.dataset import get_dataset
 from util import kfold
 
-user_coldstart = True
+user_coldstart = False
 n_entries = 0
 n_fold = 5
 

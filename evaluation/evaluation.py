@@ -8,6 +8,9 @@ from evaluation import evaluation_parting
 
 metrics_rmse = {'rmse': evaluation_metrics.Rmse()}
 
+metric_rmse_prec ={'rmse': evaluation_metrics.Rmse(),
+                   'prec@5': evaluation_metrics.Precision(5)}
+
 metrics_all = {'rmse': evaluation_metrics.Rmse(),
                'mae': evaluation_metrics.Mae(),
                'prec@5': evaluation_metrics.Precision(5),
@@ -29,7 +32,7 @@ def get_parting_all(n_bins, user_dist, item_dist):
 
 class Evaluation:
     def __init__(self,
-                 metrics: Dict[str, evaluation_metrics.Metric] = metrics_rmse,
+                 metrics: Dict[str, evaluation_metrics.Metric] = metric_rmse_prec,
                  parts: Dict[str, evaluation_parting.Parting] = parting_full):
 
         self.metrics = metrics

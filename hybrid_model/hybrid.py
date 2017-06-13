@@ -64,8 +64,8 @@ class HybridModel:
         transformation = config.transformation
 
         # Build models
-        self.model_cf = type_cf(self.n_users, self.n_items, config_cf, transformation)
-        self.model_md = type_md(meta_users, meta_items, config_md, transformation)
+        self.model_cf: AbstractModelCF = type_cf(self.n_users, self.n_items, config_cf, transformation)
+        self.model_md: AbstractModelMD = type_md(meta_users, meta_items, config_md, transformation)
 
         # Callbacks for early stopping during one cross-trainin iteration
         self.callbacks_cf = [EarlyStopping('val_loss', patience=0)]
@@ -97,9 +97,9 @@ class HybridModel:
         y_train = self.config.transformation.transform(y_train)
 
         # Reshape data into "unflattened" arrays, Keras will do that anyway
-        self.x_train = [x_train[0].reshape((len(x_train[0]), 1)), x_train[1].reshape((len(x_train[1]), 1))]
+        self.x_train = [np.expand_dims(x_train[0], 1), np.expand_dims(x_train[1], 1)]
         self.n_train = len(y_train)
-        self.y_train = y_train.reshape((self.n_train, 1))
+        self.y_train = np.expand_dims(y_train, 1)
 
         # Get distribution of ratings per user and item
         self.user_dist = np.bincount(x_train[0], minlength=self.n_users)
@@ -151,12 +151,12 @@ class HybridModel:
         # self.model_md.compile(self.config.opt_md_xtrain)
 
     def fit_cross_epoch(self):
-
+        # Vice versa
+        self._step_cf_md()
         # Get data from MD to train CF
         self._step_md_cf()
 
-        # Vice versa
-        self._step_cf_md()
+
 
     def _step_md_cf(self):
 
@@ -167,7 +167,8 @@ class HybridModel:
         y_x = self.model_md.model.predict([inds_u_x, inds_i_x])
 
         # Recompute implicit matrix
-        self.model_cf.recompute_implicit([inds_u_x, inds_i_x], y_x, transformed=True, crosstrain=True)
+        if hasattr(self.model_cf, 'recompute_implicit'):
+            self.model_cf.recompute_implicit([inds_u_x, inds_i_x], y_x, transformed=True, crosstrain=True)
 
         # Combine data with original training data
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
@@ -198,6 +199,24 @@ class HybridModel:
 
         # Return best validation loss
         return min(history.history['val_loss'])
+
+    def predict(self, x, u_cut=10, i_cut=7):
+
+        # Standardize input (keras)
+        if len(x[0].shape) == 1:
+            x[0] = np.expand_dims(x[0], 1)
+        if len(x[1].shape) == 1:
+            x[1] = np.expand_dims(x[1], 1)
+
+        # Select results from MD in case of sparse data
+        select_md = np.logical_or(self.user_dist[x[0][:]] < u_cut, self.item_dist[x[1][:]] < i_cut).flatten()
+
+        y_cf = self.model_cf.predict(x)
+        y_md = self.model_md.predict([x[0][select_md, :], x[1][select_md, :]])
+
+        y_cf[select_md] = y_md
+
+        return y_cf
 
     # def test_cf(self, x_test, y_test, prnt=False):
     #     y_pred = self.model_cf.predict(x_test)

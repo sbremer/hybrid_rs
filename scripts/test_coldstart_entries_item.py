@@ -1,5 +1,4 @@
-import scripts
-from eval_script import evaluate_models_xval, print_results, EvalModel
+from evaluation.eval_script import evaluate_models_xval, EvalModel
 from hybrid_model.dataset import get_dataset
 
 # Get dataset

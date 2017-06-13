@@ -1,7 +1,6 @@
-from evaluation.evaluation import Evaluation
-
-from eval_script import evaluate_models_xval, evaluate_models_single, print_results, EvalModel
 from evaluation import evaluation_metrics
+from evaluation.eval_script import evaluate_models_xval, print_results, EvalModel
+from evaluation.evaluation import Evaluation
 from hybrid_model.dataset import get_dataset
 
 """

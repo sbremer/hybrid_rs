@@ -1,4 +1,4 @@
-from eval_script import evaluate_models_single, evaluate_models_xval, print_results, EvalModel
+from evaluation.eval_script import evaluate_models_single, print_results, EvalModel
 from hybrid_model.dataset import get_dataset
 
 """

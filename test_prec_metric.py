@@ -1,7 +1,7 @@
 from hybrid_model.evaluation import Evaluation
 
-from eval_script import evaluate_models_xval, print_results, EvalModel
 from evaluation import evaluation_metrics
+from evaluation.eval_script import evaluate_models_xval, print_results, EvalModel
 from hybrid_model.dataset import get_dataset
 
 dataset = get_dataset('ml100k')
