@@ -151,12 +151,12 @@ class HybridModel:
         # self.model_md.compile(self.config.opt_md_xtrain)
 
     def fit_cross_epoch(self):
-        # Vice versa
+
+        # Get data from CF to train MD
         self._step_cf_md()
-        # Get data from MD to train CF
+
+        # Vice versa
         self._step_md_cf()
-
-
 
     def _step_md_cf(self):
 
@@ -221,40 +221,6 @@ class HybridModel:
         y_cf[select_md] = y_md
 
         return y_cf
-
-    # def test_cf(self, x_test, y_test, prnt=False):
-    #     y_pred = self.model_cf.predict(x_test)
-    #
-    #     result = evaluation.EvaluationResultPart()
-    #     for measure, metric in evaluation.metrics_rmse.items():
-    #         result.results[measure] = metric.calculate(y_test, y_pred, x_test)
-    #
-    #     if prnt:
-    #         print('CF: ', result)
-    #
-    #     return result
-    #
-    # def test_md(self, x_test, y_test, prnt=False):
-    #     y_pred = self.model_md.predict(x_test)
-    #
-    #     result = evaluation.EvaluationResultPart()
-    #     for measure, metric in evaluation.metrics_rmse.items():
-    #         result.results[measure] = metric.calculate(y_test, y_pred, x_test)
-    #
-    #     if prnt:
-    #         print('MD: ', result)
-    #
-    #     return result
-    #
-    # def test(self, x_test, y_test, prnt=False):
-    #     result = evaluation.EvaluationResultPart()
-    #
-    #     if prnt:
-    #         print('Results of testing:')
-    #     result.model_mf = self.test_cf(x_test, y_test, prnt)
-    #     result.model_cs = self.test_md(x_test, y_test, prnt)
-    #
-    #     return result
 
     def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=True):
 
