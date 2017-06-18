@@ -31,7 +31,8 @@ inds_u = np.argsort(order_users)[inds_u]
 inds_i = np.argsort(order_items)[inds_i]
 
 # Index sampling
-sampler = IndexSampler(dist_users, dist_items, [inds_u, inds_i])
+sampler_config = {'f_cf': 0.15, 'min_ratings_user': 30, 'f_user': 3.0, 'min_ratings_item': 10, 'f_item': 3.0}
+sampler = IndexSampler(dist_users, dist_items, sampler_config, [inds_u, inds_i])
 from_cf = sampler.get_indices_from_cf()
 from_md = sampler.get_indices_from_md()
 
@@ -81,13 +82,25 @@ from_md = (from_md[0].flatten(), from_md[1].flatten())
 # plt.scatter(from_md[1], from_md[0], s=1, marker='|', alpha=0.7)
 # plt.show()
 
-fig, ax = lplot.newfig(0.9)
+fig, ax = lplot.newfig(0.99, 0.7)
 
 plt.style.use('acm-1col')
 ax.scatter(from_cf[0], from_cf[1], s=0.02, marker='_', label='$S_{CF}$', alpha=0.5)
 ax.scatter(from_md[0], from_md[1], s=0.02, marker='|', label='$S_{MD}$', alpha=0.5)
-ax.set_xlabel('User by \#ratings')
-ax.set_ylabel('Item by \#ratings')
+
+ax.set_title('Index tuple sampling')
+ax.set_xlabel('$\leftarrow$ more - less $\\to$\n\#ratings / user')
+ax.set_ylabel('\#ratings / item\n$\leftarrow$ more - less $\\to$')
+
+plt.xticks([], [])
+plt.yticks([], [])
+
 # ax.legend()
+lgnd = ax.legend(loc="lower center", numpoints=1, fontsize=7)
+
+#change the marker size manually for both lines
+lgnd.legendHandles[0].set_sizes([20.0])
+lgnd.legendHandles[1].set_sizes([20.0])
+
 lplot.savefig('sampling')
 # plt.show()

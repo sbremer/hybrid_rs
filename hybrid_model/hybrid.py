@@ -1,7 +1,6 @@
 from typing import NewType, NamedTuple, List, Type, Dict
 
 import numpy as np
-from keras.optimizers import Optimizer
 from keras.callbacks import EarlyStopping
 
 from hybrid_model.index_sampler import IndexSampler
@@ -21,15 +20,8 @@ class HybridConfig(NamedTuple):
     model_type_md: Type[AbstractModelMD]
     model_config_md: Dict
 
-    opt_cf_init: Optimizer
-    opt_md_init: Optimizer
-    opt_cf_xtrain: Optimizer
-    opt_md_xtrain: Optimizer
-
-    batch_size_init_cf: int
-    batch_size_init_md: int
-    batch_size_xtrain_cf: int
-    batch_size_xtrain_md: int
+    batch_size_cf: int
+    batch_size_md: int
     val_split_init: float
     val_split_xtrain: float
 
@@ -91,8 +83,6 @@ class HybridModel:
 
     def fit_init(self, x_train, y_train):
 
-        self.setup_init_training()
-
         # Transform y data
         y_train = self.config.transformation.transform(y_train)
 
@@ -105,14 +95,12 @@ class HybridModel:
         self.user_dist = np.bincount(x_train[0], minlength=self.n_users)
         self.item_dist = np.bincount(x_train[1], minlength=self.n_items)
 
+        # Init Index Sampler
+        self.index_sampler = self.config.index_sampler(self.user_dist, self.item_dist,
+                                                       self.config.index_sampler_config, self.x_train)
+
         # Initially train models separately
         self._train_init()
-
-    def setup_init_training(self):
-        pass
-        # Compile model using optimizer used for initial training
-        self.model_cf.compile(self.config.opt_cf_init)
-        self.model_md.compile(self.config.opt_md_init)
 
     def _train_init(self):
 
@@ -121,16 +109,16 @@ class HybridModel:
         callbacks_md = [EarlyStoppingBestVal('val_loss', patience=5)]
 
         # Compute implicit matrix for matrix factorization
-        self.model_cf.recompute_implicit(self.x_train, self.y_train, transformed=True)
+        if hasattr(self.model_cf, 'recompute_implicit'):
+            self.model_cf.recompute_implicit(self.x_train, self.y_train, transformed=True)
 
         # Train both models with the training data only
-        self.model_cf.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_cf, epochs=200,
+        self.model_cf.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_cf, epochs=200,
                                 validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_cf)
-        self.model_md.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_init_md, epochs=200,
+        self.model_md.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_md, epochs=200,
                                 validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_md)
 
     def fit_cross(self):
-        self.setup_cross_training()
 
         # Alternating cross-training for a fixed number of epochs
         for i in range(self.config.xtrain_epochs):
@@ -139,16 +127,6 @@ class HybridModel:
                 print('Training step {}'.format(i + 1))
 
             self.fit_cross_epoch()
-
-    def setup_cross_training(self):
-
-        # Init Index Sampler
-        self.index_sampler = self.config.index_sampler(self.user_dist, self.item_dist,
-                                                       self.config.index_sampler_config, self.x_train)
-
-        # Recompile model using optimizer for cross-training
-        # self.model_cf.compile(self.config.opt_cf_xtrain)
-        # self.model_md.compile(self.config.opt_md_xtrain)
 
     def fit_cross_epoch(self):
 
@@ -174,7 +152,7 @@ class HybridModel:
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
 
         # Update-train CF model with cross-train data
-        history = self.model_cf.model.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_cf,
+        history = self.model_cf.model.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_cf,
                                           epochs=150, validation_split=self.config.val_split_xtrain, verbose=self.verbose,
                                           callbacks=self.callbacks_cf)
 
@@ -193,7 +171,7 @@ class HybridModel:
         inds_u_xtrain, inds_i_xtrain, y_xtrain = self._concat_data(inds_u_x, inds_i_x, y_x, self.config.xtrain_data_shuffle)
 
         # Update-train MD model with cross-train data
-        history = self.model_md.model.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_xtrain_md,
+        history = self.model_md.model.fit([inds_u_xtrain, inds_i_xtrain], y_xtrain, batch_size=self.config.batch_size_md,
                                           epochs=150, validation_split=self.config.val_split_xtrain, verbose=self.verbose,
                                           callbacks=self.callbacks_md)
 
