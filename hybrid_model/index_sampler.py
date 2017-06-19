@@ -26,6 +26,7 @@ class IndexSamplerUserbased(IndexSampler):
 
         min_ratings = 40
 
+
         sample_users = user_dist <= min_ratings
         self.users_cs = np.arange(self.n_users)[sample_users]
         self.user_dist_cs = np.maximum(0, min_ratings - user_dist[sample_users])*1
@@ -84,7 +85,7 @@ class IndexSamplerUserbased(IndexSampler):
         return inds_u, inds_i
 
 
-class aIndexSamplerUserItembased(IndexSampler):
+class IndexSamplerUserItembased(IndexSampler):
     def __init__(self, user_dist, item_dist, config, x_train):
         super().__init__(user_dist, item_dist, config, x_train)
 
