@@ -9,7 +9,7 @@ golden_mean = (np.sqrt(5.0) - 1.0) / 2.0
 
 
 def savefig(filename):
-    plt.tight_layout()
+    plt.tight_layout(pad=0.2)
     plt.savefig('plots/{}.pgf'.format(filename))
     plt.savefig('plots/{}.pdf'.format(filename))
 

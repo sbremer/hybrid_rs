@@ -82,15 +82,15 @@ from_md = (from_md[0].flatten(), from_md[1].flatten())
 # plt.scatter(from_md[1], from_md[0], s=1, marker='|', alpha=0.7)
 # plt.show()
 
-fig, ax = lplot.newfig(0.99, 0.7)
+fig, ax = lplot.newfig(1.0, 0.7)
 
 plt.style.use('acm-1col')
 ax.scatter(from_cf[0], from_cf[1], s=0.02, marker='_', label='$S_{CF}$', alpha=0.5)
 ax.scatter(from_md[0], from_md[1], s=0.02, marker='|', label='$S_{MD}$', alpha=0.5)
 
 ax.set_title('Index tuple sampling')
-ax.set_xlabel('$\leftarrow$ more - less $\\to$\n\#ratings / user')
-ax.set_ylabel('\#ratings / item\n$\leftarrow$ more - less $\\to$')
+ax.set_xlabel('Users with\n$\leftarrow$ more - fewer $\\to$\nratings')
+ax.set_ylabel('Items with\n$\leftarrow$ more - fewer $\\to$\nratings')
 
 plt.xticks([], [])
 plt.yticks([], [])
