@@ -3,7 +3,7 @@
 
 This repository contains the code to my research on recommender systems at Mercateo (<http://www.mercateo.com/>)
 
-It is work in progress, so you may still expect major changes as well as refacturing.
+It is work in progress, so you may still expect major changes as well as refactoring.
 
 To initialize place ML100k (ML1M) in data/ml-100k/ (data/ml-1m) and run scripts/data_prep_ml-100k.py (data_prep_ml-1m.py)
 
