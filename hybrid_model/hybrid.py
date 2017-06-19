@@ -186,7 +186,7 @@ class HybridModel:
         if len(x[1].shape) == 1:
             x[1] = np.expand_dims(x[1], 1)
 
-        # Select results from MD in case of sparse data
+        # Select results_models from MD in case of sparse data
         select_md = np.logical_or(self.user_dist[x[0][:]] < u_cut, self.item_dist[x[1][:]] < i_cut).flatten()
 
         y_cf = self.model_cf.predict(x)

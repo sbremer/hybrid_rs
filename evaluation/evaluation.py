@@ -141,14 +141,14 @@ class EvaluationResultsHybrid:
         return s
 
     def mean_rmse_cf(self):
-        rmse = self.cf.parts['full'].mean('rmse')
+        rmse = self.cf.rmse()
         return rmse
 
     def mean_rmse_md(self):
         """
         Custom hacky function for Gridsearch
         """
-        rmse = self.md.parts['full'].mean('rmse')
+        rmse = self.md.rmse()
         return rmse
 
 

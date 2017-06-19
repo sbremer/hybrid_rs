@@ -84,7 +84,7 @@ class IndexSamplerUserbased(IndexSampler):
         return inds_u, inds_i
 
 
-class IndexSamplerUserItembased(IndexSampler):
+class aIndexSamplerUserItembased(IndexSampler):
     def __init__(self, user_dist, item_dist, config, x_train):
         super().__init__(user_dist, item_dist, config, x_train)
 
