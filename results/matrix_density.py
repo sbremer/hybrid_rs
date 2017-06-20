@@ -83,24 +83,28 @@ from_md = (from_md[0].flatten(), from_md[1].flatten())
 # plt.show()
 
 fig, ax = lplot.newfig(1.0, 0.7)
+# fig, ax = plt.subplots()
 
 plt.style.use('acm-1col')
 ax.scatter(from_cf[0], from_cf[1], s=0.02, marker='_', label='$S_{CF}$', alpha=0.5)
 ax.scatter(from_md[0], from_md[1], s=0.02, marker='|', label='$S_{MD}$', alpha=0.5)
 
-ax.set_title('Index tuple sampling')
+ax.set_title('Index tuple Sampling')
 ax.set_xlabel('Users with\n$\leftarrow$ more - fewer $\\to$\nratings')
 ax.set_ylabel('Items with\n$\leftarrow$ more - fewer $\\to$\nratings')
 
 plt.xticks([], [])
 plt.yticks([], [])
 
-# ax.legend()
 lgnd = ax.legend(loc="lower center", numpoints=1, fontsize=7)
 
 #change the marker size manually for both lines
-lgnd.legendHandles[0].set_sizes([20.0])
-lgnd.legendHandles[1].set_sizes([20.0])
+for handle in lgnd.legendHandles:
+    handle._alpha = 1.0
+    handle.set_sizes([20])
+
+# Swap marker paths
+lgnd.legendHandles[0]._paths, lgnd.legendHandles[1]._paths = lgnd.legendHandles[1]._paths, lgnd.legendHandles[0]._paths
 
 lplot.savefig('sampling')
 # plt.show()

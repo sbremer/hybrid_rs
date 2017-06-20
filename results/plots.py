@@ -42,7 +42,7 @@ pgf_with_latex = {  # setup matplotlib to use latex for output
     'legend.fontsize': 8,  # Make the legend/label fonts a little smaller
     'xtick.labelsize': 8,
     'ytick.labelsize': 8,
-    'figure.figsize': figsize(0.9),  # default fig size of 0.9 textwidth
+    # 'figure.figsize': figsize(0.9),  # default fig size of 0.9 textwidth
     # 'figure.autolayout': True,
     'pgf.preamble': [
         r'\usepackage[utf8x]{inputenc}',  # use utf8 fonts becasue your computer can handle it :)
