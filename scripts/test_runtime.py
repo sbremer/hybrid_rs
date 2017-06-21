@@ -7,10 +7,12 @@ dataset = get_dataset('ml100k')
 
 models = []
 
-# SVD++
-from hybrid_model.models import SVDpp
-model_type = SVDpp
-config = {}
+# Hybrid Model
+from hybrid_model.hybrid import HybridModel
+from hybrid_model.config import hybrid_config
+
+model_type = HybridModel
+config = hybrid_config
 models.append(EvalModel(model_type.__name__, model_type, config))
 
 start = time.time()
@@ -23,8 +25,16 @@ print('Elapsed time: {}s'.format(elapsed))
 print_results(results)
 
 """
-Elapsed time: 93.90857577323914s
-------- SVDpp
+Elapsed time: 317.58788084983826s
+------- HybridModel
 === Part full
-rmse: 0.9004 ± 0.0034  prec@5: 0.7789 ± 0.0037
+rmse: 0.8959 ± 0.0025  prec@5: 0.7820 ± 0.0032
+
+------- HybridModel_SVDpp
+=== Part full
+rmse: 0.9002 ± 0.0028  prec@5: 0.7774 ± 0.0021
+
+------- HybridModel_AttributeBiasExperimental
+=== Part full
+rmse: 0.9266 ± 0.0038  prec@5: 0.7593 ± 0.0027
 """

@@ -26,7 +26,6 @@ x = range(len(rmses_epochs_cf))
 
 fig, ax = lplot.newfig(1.0)
 
-plt.style.use('acm-1col')
 ax.plot(x, rmses_epochs_cf, '-', label='CF')
 ax.plot(x, rmses_epochs_md, '--', label='MD')
 ax.plot(x, rmses_epochs_hybrid, ':', label='Hybrid')

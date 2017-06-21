@@ -15,7 +15,7 @@ def savefig(filename):
 
 
 def figsize(scale, ratio=golden_mean):
-    fig_width_pt = 241.14749  # Get this from LaTeX using \the\textwidth
+    fig_width_pt = 241.14749  # <- One column of ACM Conf. Get this from LaTeX using \the\linewidth
     inches_per_pt = 1.0 / 72.27  # Convert pt to inch
     fig_width = fig_width_pt * inches_per_pt * scale  # width in inches
     fig_height = fig_width * ratio  # height in inches

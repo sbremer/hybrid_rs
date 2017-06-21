@@ -23,7 +23,6 @@ for x_at, y1, y2 in zip(x, rmses_after_cf, rmses_after_md):
 
 fig, ax = lplot.newfig(1.0)
 
-plt.style.use('acm-1col')
 ax.plot(x, rmses_before_cf, '-', label='CF')
 ax.plot(x, rmses_before_md, '--', label='MD')
 ax.plot(x, rmses_after_hybrid, ':', label='Hybrid')
