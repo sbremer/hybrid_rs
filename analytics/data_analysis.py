@@ -56,3 +56,28 @@ print('Items without any users {}'.format(items_without_users))
 # users_per_item_avg = np.mean(np.sum((sales_sparse != 0), 0))
 # print('Average number of items per user {}'.format(items_per_user_avg))
 # print('Average number of users per item {}'.format(users_per_item_avg))
+
+ga = np.mean(y)
+y_shift = y - ga
+print('Global Average: {:4.4f}'.format(ga))
+
+user_stats = pd.DataFrame([], index=users_features_desc)
+user_stats['# users'] = np.sum(users_features, 0)
+user_stats['# interactions'] = np.sum(users_features[inds_u, :], 0)
+user_stats['avg rating'] = users_features[inds_u, :].T @ y_shift / np.sum(users_features[inds_u, :], 0)
+print(user_stats)
+
+item_stats = pd.DataFrame([], index=items_features_desc)
+item_stats['# items'] = np.sum(items_features, 0)
+item_stats['# interactions'] = np.sum(items_features[inds_i, :], 0)
+item_stats['avg rating'] = items_features[inds_i, :].T @ y_shift / np.sum(items_features[inds_i, :], 0)
+print(item_stats)
+
+
+pd.DataFrame((users_features.T @ users_features)[7:, :9], index=users_features_desc[7:], columns=users_features_desc[:9])
+
+concat_features_desc = users_features_desc + items_features_desc
+concat_features_interactions = np.concatenate((users_features[inds_u, :], items_features[inds_i, :]), 1)
+pd.DataFrame(concat_features_interactions.T @ concat_features_interactions, index=concat_features_desc, columns=concat_features_desc)
+
+np.matmul(users_features[:, 7].astype(np.int32), users_features[:, 7].T)
