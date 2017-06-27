@@ -74,10 +74,16 @@ item_stats['avg rating'] = items_features[inds_i, :].T @ y_shift / np.sum(items_
 print(item_stats)
 
 
-pd.DataFrame((users_features.T @ users_features)[7:, :9], index=users_features_desc[7:], columns=users_features_desc[:9])
+user_feature_stats = pd.DataFrame((users_features.T @ users_features)[7:, :9], index=users_features_desc[7:], columns=users_features_desc[:9])
+print(user_feature_stats)
+
+item_feature_stats = pd.DataFrame((items_features.T @ items_features), index=items_features_desc, columns=items_features_desc)
+print(item_feature_stats)
 
 concat_features_desc = users_features_desc + items_features_desc
 concat_features_interactions = np.concatenate((users_features[inds_u, :], items_features[inds_i, :]), 1)
-pd.DataFrame(concat_features_interactions.T @ concat_features_interactions, index=concat_features_desc, columns=concat_features_desc)
+feature_interactions = pd.DataFrame(concat_features_interactions.T @ concat_features_interactions, index=concat_features_desc, columns=concat_features_desc)
+print(feature_interactions)
 
-np.matmul(users_features[:, 7].astype(np.int32), users_features[:, 7].T)
+feature_corr = pd.DataFrame((concat_features_interactions.T * y_shift) @ concat_features_interactions / feature_interactions.values, index=concat_features_desc, columns=concat_features_desc)
+print(feature_corr)
