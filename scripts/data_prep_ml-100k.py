@@ -34,18 +34,26 @@ users_age_onehot = pd.get_dummies(user_age)
 users_sex_onehot = pd.get_dummies(users.sex)
 users_occ_onehot = pd.get_dummies(users.occupation)
 
+desc_age = list(map(str, users_age_onehot.columns.tolist()))
+desc_sex = users_sex_onehot.columns.tolist()
+desc_occ = users_occ_onehot.columns.tolist()
+
 users_features = pd.concat([users_age_onehot, users_sex_onehot, users_occ_onehot], axis=1).values
+
+users_features_desc = desc_age + desc_sex + desc_occ
 
 # Build item data
 items_genre = items.iloc[:, 5:]
 
-# items_age = items.iloc[:, 2]
-# items_age = items_age.fillna('1995').apply(lambda x: x.split('-')[-1])
-
 items_features = items_genre.values
+items_features_desc = items_genre.columns.tolist()
+
+users_desc = list(map(lambda x: 'User_{}'.format(x), range(n_users)))
+items_desc = items['title'].tolist()
 
 inds_u = ratings.user_id.astype(np.int).values - 1
 inds_i = ratings.item_id.astype(np.int).values - 1
 y = ratings.rating.astype(np.float).values
 
 pickle.dump((inds_u, inds_i, y, users_features, items_features), open('data/ml100k.pickle', 'wb'), pickle.HIGHEST_PROTOCOL)
+pickle.dump((users_desc, items_desc, users_features_desc, items_features_desc), open('data/ml100k_desc.pickle', 'wb'), pickle.HIGHEST_PROTOCOL)

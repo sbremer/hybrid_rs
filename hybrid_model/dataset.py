@@ -1,5 +1,20 @@
 import pickle
 
+_datasets = {'ml100k': 'data/ml100k', 'ml1m': 'data/ml1m'}
+
+
+def _get_dataset_filename(dataset, desc=False):
+
+    if dataset not in _datasets.keys():
+        raise ValueError
+
+    if desc:
+        filename = _datasets[dataset] + '_desc.pickle'
+    else:
+        filename = _datasets[dataset] + '.pickle'
+
+    return filename
+
 
 class Dataset:
     def __init__(self, inds_u, inds_i, y, users_features, items_features):
@@ -9,11 +24,18 @@ class Dataset:
 
 
 def get_dataset(dataset):
-    datasets = {'ml100k': 'data/ml100k.pickle', 'ml1m': 'data/ml1m.pickle'}
 
-    if dataset not in datasets.keys():
-        raise ValueError
+    filename = _get_dataset_filename(dataset)
 
-    (inds_u, inds_i, y, users_features, items_features) = pickle.load(open(datasets[dataset], 'rb'))
+    (inds_u, inds_i, y, users_features, items_features) = pickle.load(open(filename, 'rb'))
 
     return Dataset(inds_u, inds_i, y, users_features, items_features)
+
+
+def get_dataset_desc(dataset):
+
+    filename = _get_dataset_filename(dataset, True)
+
+    (users_desc, items_desc, users_features_desc, items_features_desc) = pickle.load(open(filename, 'rb'))
+
+    return (users_desc, items_desc, users_features_desc, items_features_desc)
