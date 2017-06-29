@@ -3,9 +3,11 @@ from hybrid_model import dataset
 import pandas as pd
 import numpy as np
 
-ds = dataset.get_dataset('ml100k')
+ds_name = 'ml100k'
+
+ds = dataset.get_dataset(ds_name)
 (inds_u, inds_i, y, users_features, items_features) = ds.data
-(users_desc, items_desc, users_features_desc, items_features_desc) = dataset.get_dataset_desc('ml100k')
+(users_desc, items_desc, users_features_desc, items_features_desc) = dataset.get_dataset_desc(ds_name)
 
 n_users = ds.n_users
 n_items = ds.n_items
