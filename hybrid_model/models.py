@@ -14,7 +14,7 @@ early_stopping_callback = [EarlyStoppingBestVal('val_loss', patience=10)]
 
 
 class AbstractModel:
-    def __init__(self, n_users, n_items, config, transformation):
+    def __init__(self, n_users, n_items, config):
         self.model: Model = None
         self.n_users = n_users
         self.n_items = n_items
@@ -24,7 +24,7 @@ class AbstractModel:
         self.config = config
 
         self.optimizer = self.config.get('optimizer', 'adagrad')
-        self.transformation = transformation
+        self.transformation = self.config.get('transformation', TransformationLinear())
 
     def compile(self, optimizer=None):
         if optimizer:
@@ -52,20 +52,20 @@ class AbstractModel:
 
 
 class AbstractModelCF(AbstractModel):
-    def __init__(self, n_users, n_items, config, transformation):
-        super().__init__(n_users, n_items, config, transformation)
+    def __init__(self, n_users, n_items, config):
+        super().__init__(n_users, n_items, config)
 
 
 class AbstractModelMD(AbstractModel):
-    def __init__(self, meta_users, meta_items, config, transformation):
+    def __init__(self, meta_users, meta_items, config):
         n_users, self.n_users_features = meta_users.shape[:2]
         n_items, self.n_items_feature = meta_items.shape[:2]
-        super().__init__(n_users, n_items, config, transformation)
+        super().__init__(n_users, n_items, config)
 
 
 class BiasEstimator(AbstractModelCF):
-    def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
-        super().__init__(n_users, n_items, config, transformation)
+    def __init__(self, n_users, n_items, config=None):
+        super().__init__(n_users, n_items, config)
 
         # Defaults
         default = {'reg_bias': 0.00005}
@@ -93,8 +93,8 @@ class BiasEstimator(AbstractModelCF):
 
 
 class BiasEstimatorCustom(AbstractModelCF):
-    def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
-        super().__init__(n_users, n_items, config, transformation)
+    def __init__(self, n_users, n_items, config=None):
+        super().__init__(n_users, n_items, config)
 
         self.include_user = self.config.get('include_user', True)
         self.include_item = self.config.get('include_item', True)
@@ -144,8 +144,8 @@ class BiasEstimatorCustom(AbstractModelCF):
 
 
 class SVD(AbstractModelCF):
-    def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
-        super().__init__(n_users, n_items, config, transformation)
+    def __init__(self, n_users, n_items, config=None):
+        super().__init__(n_users, n_items, config)
 
         # Defaults
         default = {'n_factors': 40, 'reg_bias': 0.00005, 'reg_latent': 0.00003}
@@ -183,8 +183,8 @@ class SVD(AbstractModelCF):
 
 
 class SVDpp(AbstractModelCF):
-    def __init__(self, n_users, n_items, config=None, transformation=TransformationLinear()):
-        super().__init__(n_users, n_items, config, transformation)
+    def __init__(self, n_users, n_items, config=None):
+        super().__init__(n_users, n_items, config)
 
         self.implicit = np.zeros((self.n_users, self.n_items))
 
@@ -267,8 +267,8 @@ class SVDpp(AbstractModelCF):
 
 
 class AttributeBias(AbstractModelMD):
-    def __init__(self, meta_users, meta_items, config=None, transformation=TransformationLinear()):
-        super().__init__(meta_users, meta_items, config, transformation)
+    def __init__(self, meta_users, meta_items, config=None):
+        super().__init__(meta_users, meta_items, config)
 
         # Defaults
         default = {'reg_bias': 0.0002, 'reg_att_bias': 0.0003}
@@ -318,8 +318,8 @@ class AttributeBias(AbstractModelMD):
 
 
 class AttributeBiasExperimental(AbstractModelMD):
-    def __init__(self, meta_users, meta_items, config=None, transformation=TransformationLinear()):
-        super().__init__(meta_users, meta_items, config, transformation)
+    def __init__(self, meta_users, meta_items, config=None):
+        super().__init__(meta_users, meta_items, config)
 
         # Defaults
         default = {'reg_bias': 0.0002, 'reg_att_bias': 0.0003}

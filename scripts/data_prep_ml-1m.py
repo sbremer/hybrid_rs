@@ -32,7 +32,7 @@ desc_age = list(map(str, users_age_onehot.columns.tolist()))
 desc_sex = users_sex_onehot.columns.tolist()
 desc_occ = occupations
 
-users_features = pd.concat([users_age_onehot, users_sex_onehot, users_occ_onehot], axis=1).values
+users_features = pd.concat([users_age_onehot, users_sex_onehot, users_occ_onehot], axis=1).values.astype(np.int)
 
 users_features_desc = desc_age + desc_sex + desc_occ
 
@@ -42,7 +42,7 @@ items = items.append(pd.DataFrame(d))
 items = items.iloc[items.item_id.argsort().values, :]
 
 items_genre = items.genre.str.get_dummies(sep='|')
-items_features = items_genre.values
+items_features = items_genre.values.astype(np.int)
 
 items_features_desc = items_genre.columns.tolist()
 

@@ -38,14 +38,14 @@ desc_age = list(map(str, users_age_onehot.columns.tolist()))
 desc_sex = users_sex_onehot.columns.tolist()
 desc_occ = users_occ_onehot.columns.tolist()
 
-users_features = pd.concat([users_age_onehot, users_sex_onehot, users_occ_onehot], axis=1).values
+users_features = pd.concat([users_age_onehot, users_sex_onehot, users_occ_onehot], axis=1).values.astype(np.int)
 
 users_features_desc = desc_age + desc_sex + desc_occ
 
 # Build item data
 items_genre = items.iloc[:, 5:]
 
-items_features = items_genre.values
+items_features = items_genre.values.astype(np.int)
 items_features_desc = items_genre.columns.tolist()
 
 users_desc = list(map(lambda x: 'User_{}'.format(x), range(n_users)))
