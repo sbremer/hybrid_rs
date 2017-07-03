@@ -55,9 +55,12 @@ class HybridModel:
         config_md = config.model_config_md
         transformation = config.transformation
 
+        config_cf['transformation'] = transformation
+        config_md['transformation'] = transformation
+
         # Build models
-        self.model_cf: AbstractModelCF = type_cf(self.n_users, self.n_items, config_cf, transformation)
-        self.model_md: AbstractModelMD = type_md(meta_users, meta_items, config_md, transformation)
+        self.model_cf: AbstractModelCF = type_cf(self.n_users, self.n_items, config_cf)
+        self.model_md: AbstractModelMD = type_md(meta_users, meta_items, config_md)
 
         # Callbacks for early stopping during one cross-trainin iteration
         self.callbacks_cf = [EarlyStopping('val_loss', patience=0)]
