@@ -3,3 +3,4 @@ keras
 matplotlib
 sklearn
 theano
+pandas
