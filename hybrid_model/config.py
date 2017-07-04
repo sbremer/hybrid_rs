@@ -18,5 +18,7 @@ hybrid_config = HybridConfig(
     index_sampler_config={'f_cf': 0.15, 'min_ratings_user': 30, 'f_user': 3.0, 'min_ratings_item': 10, 'f_item': 3.0},
     xtrain_epochs=4,
     xtrain_data_shuffle=True,
+    cutoff_user=10,
+    cutoff_item=7,
     transformation=transform.TransformationLinear
 )

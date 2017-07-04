@@ -31,6 +31,9 @@ class HybridConfig(NamedTuple):
     xtrain_epochs: int
     xtrain_data_shuffle: bool
 
+    cutoff_user: int
+    cutoff_item: int
+
     transformation: Transformation
 
 
@@ -181,7 +184,7 @@ class HybridModel:
         # Return best validation loss
         return min(history.history['val_loss'])
 
-    def predict(self, x, u_cut=10, i_cut=7):
+    def predict(self, x):
 
         # Standardize input (keras)
         if len(x[0].shape) == 1:
@@ -190,7 +193,10 @@ class HybridModel:
             x[1] = np.expand_dims(x[1], 1)
 
         # Select results_models from MD in case of sparse data
-        select_md = np.logical_or(self.user_dist[x[0][:]] < u_cut, self.item_dist[x[1][:]] < i_cut).flatten()
+        select_md = np.logical_or(
+            self.user_dist[x[0][:]] < self.config.cutoff_user,
+            self.item_dist[x[1][:]] < self.config.cutoff_item
+        ).flatten()
 
         y_cf = self.model_cf.predict(x)
 
