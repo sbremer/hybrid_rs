@@ -129,8 +129,16 @@ class IndexSamplerUserItembased(IndexSampler):
 
         lookup_samples = {}
 
+        max_iter = self.n_inds_from_cf * 200
+
         got = 0
+        s = 0
+
         while got < self.n_inds_from_cf:
+
+            if s > max_iter:
+                break
+
             u = np.random.choice(np.arange(self.n_users), p=self.prob_from_cf_user)
             i = np.random.choice(np.arange(self.n_items), p=self.prob_from_cf_item)
 
@@ -140,7 +148,7 @@ class IndexSamplerUserItembased(IndexSampler):
                 lookup_samples[(u, i)] = True
                 got += 1
 
-        return inds_u, inds_i
+        return inds_u[:got], inds_i[:got]
 
     def get_indices_from_md(self):
         inds_u = np.zeros((self.n_inds_from_md, 1), np.int)
@@ -151,8 +159,16 @@ class IndexSamplerUserItembased(IndexSampler):
         got = 0
 
         for u, n_u in zip(self.users_cs, self.user_dist_cs):
+
             got_u = 0
+            s = 0
+            max_iter = n_u * 200
+
             while got_u < n_u:
+
+                if s > max_iter:
+                    break
+
                 i = np.random.choice(np.arange(self.n_items), p=self.prob_from_md_item)
                 if (u, i) not in self.lookup and (u, i) not in lookup_samples:
                     inds_u[got] = u
@@ -162,8 +178,16 @@ class IndexSamplerUserItembased(IndexSampler):
                     got_u += 1
 
         for i, n_i in zip(self.items_cs, self.item_dist_cs):
+
             got_i = 0
+            s = 0
+            max_iter = n_i * 200
+
             while got_i < n_i:
+
+                if s > max_iter:
+                    break
+
                 u = np.random.choice(np.arange(self.n_users), p=self.prob_from_md_user)
                 if (u, i) not in self.lookup and (u, i) not in lookup_samples:
                     inds_u[got] = u
@@ -172,7 +196,7 @@ class IndexSamplerUserItembased(IndexSampler):
                     got += 1
                     got_i += 1
 
-        return inds_u, inds_i
+        return inds_u[:got], inds_i[:got]
 
 
 class IndexSamplerUniform(IndexSampler):

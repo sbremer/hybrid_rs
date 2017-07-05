@@ -1,3 +1,4 @@
+import script_chdir
 from evaluation.eval_script import evaluate_models_xval, EvalModel
 from hybrid_model.dataset import get_dataset
 

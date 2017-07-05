@@ -1,4 +1,4 @@
-import scripts
+import script_chdir
 from scripts.basic_testing import get_results
 from evaluation.eval_script import print_results
 

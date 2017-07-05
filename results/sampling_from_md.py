@@ -1,4 +1,4 @@
-import scripts
+import script_chdir
 import numpy as np
 import results.plots as lplot
 import matplotlib.pyplot as plt

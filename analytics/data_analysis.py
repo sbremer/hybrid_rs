@@ -1,4 +1,4 @@
-import scripts
+import script_chdir
 from hybrid_model import dataset
 import pandas as pd
 import numpy as np

@@ -1,3 +1,4 @@
+import script_chdir
 import numpy as np
 
 np.random.seed(0)

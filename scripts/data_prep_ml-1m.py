@@ -1,4 +1,4 @@
-import scripts
+import script_chdir
 import numpy as np
 import pandas as pd
 import pickle
