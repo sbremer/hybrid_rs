@@ -8,11 +8,11 @@ from util.layers_custom import BiasLayer
 from hybrid_model.models.abstract import AbstractModelCF, bias_init
 
 
-class SigmoidSVDpp(AbstractModelCF):
+class SigmoidUserAsymFactoring(AbstractModelCF):
     def __init__(self, n_users, n_items, config=None):
         super().__init__(n_users, n_items, config)
 
-        self.implicit = np.zeros((self.n_users, self.n_items))
+        self.implicit = np.zeros((self.n_items, self.n_users, ))
 
         # Defaults
         default = {'n_factors': 40, 'reg_bias': 0.00005, 'reg_latent': 0.00003, 'implicit_thresh': 4.0,
@@ -33,20 +33,16 @@ class SigmoidSVDpp(AbstractModelCF):
 
         vec_u = Embedding(self.n_users, n_factors, input_length=1, embeddings_regularizer=reg_latent)(input_u)
         vec_u_r = Flatten()(vec_u)
-        vec_i = Embedding(self.n_items, n_factors, input_length=1, embeddings_regularizer=reg_latent)(input_i)
-        vec_i_r = Flatten()(vec_i)
 
-        vec_implicit = Embedding(self.n_users, self.n_items, input_length=1, trainable=False, name='implicit')(
-            input_u)
+        vec_implicit = Embedding(self.n_items, self.n_users, input_length=1, trainable=False, name='implicit')(
+            input_i)
 
         implicit_factors = Dense(n_factors, kernel_initializer='normal', activation='linear',
                                  kernel_regularizer=reg_latent)(vec_implicit)
 
         implicit_factors = Flatten()(implicit_factors)
 
-        vec_u_added = Add()([vec_u_r, implicit_factors])
-
-        mf = Dot(1)([vec_u_added, vec_i_r])
+        mf = Dot(1)([implicit_factors, vec_u_r])
 
         bias_u = Embedding(self.n_users, 1, input_length=1, embeddings_initializer='zeros',
                            embeddings_regularizer=reg_bias)(input_u)
@@ -81,7 +77,7 @@ class SigmoidSVDpp(AbstractModelCF):
         # Use ratings over the threshold as implicit feedback
         for u, i, r in zip(inds_u, inds_i, y):
             if r >= thresh:
-                self.implicit[u, i] = 1.0
+                self.implicit[i, u] = 1.0
 
         # Normalize using sqrt (ref. SVD++ paper)
         implicit_norm = self.implicit / np.sqrt(np.maximum(1, np.sum(self.implicit, axis=1)[:, None]))

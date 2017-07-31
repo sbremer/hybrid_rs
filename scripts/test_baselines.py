@@ -26,15 +26,27 @@ models = []
 # config = {}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-# SVDpp
-from hybrid_model.models import SVDpp
-model_type = SVDpp
+# # SVDpp
+# from hybrid_model.models import SVDpp
+# model_type = SVDpp
+# config = {}
+# models.append(EvalModel(model_type.__name__, model_type, config))
+#
+# # SigmoidSVDpp
+# from hybrid_model.models import SigmoidSVDpp
+# model_type = SigmoidSVDpp
+# config = {}
+# models.append(EvalModel(model_type.__name__, model_type, config))
+
+# SigmoidUserAsymFactoring
+from hybrid_model.models import SigmoidUserAsymFactoring
+model_type = SigmoidUserAsymFactoring
 config = {}
 models.append(EvalModel(model_type.__name__, model_type, config))
 
-# SigmoidSVDpp
-from hybrid_model.models import SigmoidSVDpp
-model_type = SigmoidSVDpp
+# SigmoidItemAsymFactoring
+from hybrid_model.models import SigmoidItemAsymFactoring
+model_type = SigmoidItemAsymFactoring
 config = {}
 models.append(EvalModel(model_type.__name__, model_type, config))
 

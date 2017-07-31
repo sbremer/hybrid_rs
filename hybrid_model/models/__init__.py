@@ -13,3 +13,6 @@ from .sigmoidsvdpp import SigmoidSVDpp
 from .attributebias import AttributeBias
 from .attributebias_advanced import AttributeBiasAdvanced
 from .attributefactorization import AttributeFactorization
+
+from .sigmoid_user_asymfactoring import SigmoidUserAsymFactoring
+from .sigmoid_item_asymfactoring import SigmoidItemAsymFactoring
