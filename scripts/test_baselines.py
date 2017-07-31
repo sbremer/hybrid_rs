@@ -14,18 +14,30 @@ models = []
 # config = {}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-# AttributeBiasExperimental
-from hybrid_model.models import AttributeBiasExperimental
-model_type = AttributeBiasExperimental
+# # AttributeBiasExperimental
+# from hybrid_model.models import AttributeBiasExperimental
+# model_type = AttributeBiasExperimental
+# config = {}
+# models.append(EvalModel(model_type.__name__, model_type, config))
+#
+# # AttributeLFF
+# from hybrid_model.models import AttributeLFF
+# model_type = AttributeLFF
+# config = {}
+# models.append(EvalModel(model_type.__name__, model_type, config))
+
+# SVDpp
+from hybrid_model.models import SVDpp
+model_type = SVDpp
 config = {}
 models.append(EvalModel(model_type.__name__, model_type, config))
 
-# AttributeLFF
-from hybrid_model.models import AttributeLFF
-model_type = AttributeLFF
+# SigmoidSVDpp
+from hybrid_model.models import SigmoidSVDpp
+model_type = SigmoidSVDpp
 config = {}
 models.append(EvalModel(model_type.__name__, model_type, config))
 
-results = evaluate_models_xval(dataset, models, coldstart=True, cs_type='item', n_entries=0)
+results = evaluate_models_xval(dataset, models, coldstart=False, cs_type='user', n_entries=0)
 
 print_results(results)

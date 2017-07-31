@@ -8,7 +8,7 @@ hybrid_config = HybridConfig(
     model_type_cf=models.SVDpp,
     model_config_cf={'n_factors': 40, 'reg_bias': 0.00005, 'reg_latent': 0.00003,
                      'implicit_thresh': 4.0, 'implicit_thresh_crosstrain': 4.75, 'optimizer': 'adagrad'},
-    model_type_md=models.AttributeBiasExperimental,
+    model_type_md=models.AttributeBiasAdvanced,
     model_config_md={'reg_bias': 0.0002, 'reg_att_bias': 0.0003, 'optimizer': 'adagrad'},
     batch_size_cf=256,
     batch_size_md=1024,
