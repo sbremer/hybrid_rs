@@ -9,6 +9,7 @@ from evaluation import evaluation_parting
 metrics_rmse = {'rmse': evaluation_metrics.Rmse()}
 
 metrics_rmse_prec = {'rmse': evaluation_metrics.Rmse(),
+                     'mae': evaluation_metrics.Mae(),
                      'prec@5': evaluation_metrics.Precision(5)}
 
 metrics_all = {'rmse': evaluation_metrics.Rmse(),
