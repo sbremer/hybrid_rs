@@ -65,24 +65,24 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 #                      'implicit_thresh': 3.0, 'optimizer': 'adagrad'}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-results = evaluate_models_xval(dataset, models, coldstart=True, cs_type='user', n_entries=0)
+results = evaluate_models_xval(dataset, models, coldstart=False, cs_type='user', n_entries=0)
 
 print_results(results)
 
-# 1: 0.8903
-# 2: 0.8872
-# 3: 0.8859
-# 4: 0.8875
-# 5: 0.8978
+# ------- HybridModel
+# RMSE: 0.8961 ± 0.0032  MAE: 0.7071 ± 0.0035  Prec@5: 0.7813 ± 0.0016  TopNRecall(k=100): 0.8468 ± 0.0030
+# ------- HybridModel_SVDpp
+# RMSE: 0.9001 ± 0.0035  MAE: 0.7116 ± 0.0037  Prec@5: 0.7781 ± 0.0036  TopNRecall(k=100): 0.8695 ± 0.0029
+# ------- HybridModel_AttributeBiasAdvanced
+# RMSE: 0.9269 ± 0.0047  MAE: 0.7336 ± 0.0041  Prec@5: 0.7572 ± 0.0015  TopNRecall(k=100): 0.8177 ± 0.0016
+# ------- BiasEstimator
+# RMSE: 0.9420 ± 0.0050  MAE: 0.7458 ± 0.0041  Prec@5: 0.7485 ± 0.0026  TopNRecall(k=100): 0.8210 ± 0.0029
+# ------- SVD
+# RMSE: 0.9248 ± 0.0040  MAE: 0.7331 ± 0.0030  Prec@5: 0.7652 ± 0.0021  TopNRecall(k=100): 0.8481 ± 0.0023
 
 # ------- HybridModel
-# === Part full
-# rmse: 0.8852 ± 0.0029  mae: 0.6965 ± 0.0025  prec@5: 0.7832 ± 0.0024
-#
+# RMSE: 0.8827 ± 0.0025  MAE: 0.6952 ± 0.0021  Prec@5: 0.7872 ± 0.0022  TopNRecall(k=100): 0.8614 ± 0.0011
 # ------- HybridModel_SigmoidUserAsymFactoring
-# === Part full
-# rmse: 0.8864 ± 0.0034  mae: 0.6969 ± 0.0030  prec@5: 0.7808 ± 0.0026
-#
+# RMSE: 0.8847 ± 0.0030  MAE: 0.6962 ± 0.0023  Prec@5: 0.7824 ± 0.0009  TopNRecall(k=100): 0.8883 ± 0.0019
 # ------- HybridModel_AttributeBiasAdvanced
-# === Part full
-# rmse: 0.9265 ± 0.0038  mae: 0.7331 ± 0.0035  prec@5: 0.7589 ± 0.0017
+# RMSE: 0.9266 ± 0.0048  MAE: 0.7326 ± 0.0041  Prec@5: 0.7580 ± 0.0028  TopNRecall(k=100): 0.8181 ± 0.0021

@@ -22,10 +22,10 @@ def _analyze_hybrid(model: HybridModel, evaluater: Evaluation, train, test)\
         -> Tuple[EvaluationResultHybrid, EvaluationResultHybrid]:
 
     model.fit_init(*train)
-    result_before_x = evaluater.evaluate_hybrid(model, *test)
+    result_before_x = evaluater.evaluate_hybrid(model, *train, *test)
 
     model.fit_cross()
-    result_after_x = evaluater.evaluate_hybrid(model, *test)
+    result_after_x = evaluater.evaluate_hybrid(model, *train, *test)
 
     return result_before_x, result_after_x
 
@@ -34,10 +34,10 @@ def _analyze_hybrid_as_model(model: HybridModel, evaluater: Evaluation, train, t
         -> Tuple[EvaluationResult, EvaluationResult, EvaluationResult]:
 
     model.fit_init(*train)
-    result_before_x = evaluater.evaluate_hybrid(model, *test)
+    result_before_x = evaluater.evaluate_hybrid(model, *train, *test)
 
     model.fit_cross()
-    result_hybrid = evaluater.evaluate(model, *test)
+    result_hybrid = evaluater.evaluate(model, *train, *test)
 
     return result_hybrid, result_before_x.cf, result_before_x.md
 
@@ -45,7 +45,7 @@ def _analyze_hybrid_as_model(model: HybridModel, evaluater: Evaluation, train, t
 def _analyze_model(model, evaluation: Evaluation, train, test)\
         -> EvaluationResult:
     model.fit(*train)
-    result = evaluation.evaluate(model, *test)
+    result = evaluation.evaluate(model, *train, *test)
     return result
 
 
@@ -101,10 +101,6 @@ def evaluate_models_xval(dataset: Dataset, models: List[EvalModel], coldstart=Fa
         inds_u_test = inds_u[xval_test]
         inds_i_test = inds_i[xval_test]
         y_test = y[xval_test]
-
-        user_dist = np.bincount(inds_u_train, minlength=dataset.n_users)
-        item_dist = np.bincount(inds_i_train, minlength=dataset.n_items)
-        evaluater.update_parts(user_dist, item_dist)
 
         train = ([inds_u_train, inds_i_train], y_train)
         test = ([inds_u_test, inds_i_test], y_test)
@@ -167,10 +163,6 @@ def evaluate_models_single(dataset: Dataset, models: List[EvalModel], coldstart=
 
     if evaluater is None:
         evaluater = Evaluation()
-
-    user_dist = np.bincount(inds_u_train, minlength=dataset.n_users)
-    item_dist = np.bincount(inds_i_train, minlength=dataset.n_items)
-    evaluater.update_parts(user_dist, item_dist)
 
     train = ([inds_u_train, inds_i_train], y_train)
     test = ([inds_u_test, inds_i_test], y_test)
@@ -244,10 +236,6 @@ def evaluate_hybrid_xval(dataset: Dataset, config, coldstart=False, cs_type='use
         inds_i_test = inds_i[xval_test]
         y_test = y[xval_test]
 
-        user_dist = np.bincount(inds_u_train, minlength=dataset.n_users)
-        item_dist = np.bincount(inds_i_train, minlength=dataset.n_items)
-        evaluater.update_parts(user_dist, item_dist)
-
         train = ([inds_u_train, inds_i_train], y_train)
         test = ([inds_u_test, inds_i_test], y_test)
 
@@ -296,10 +284,6 @@ def evaluate_hybrid_single(dataset: Dataset, config, coldstart=False, cs_type='u
     inds_u_test = inds_u[xval_test]
     inds_i_test = inds_i[xval_test]
     y_test = y[xval_test]
-
-    user_dist = np.bincount(inds_u_train, minlength=dataset.n_users)
-    item_dist = np.bincount(inds_i_train, minlength=dataset.n_items)
-    evaluater.update_parts(user_dist, item_dist)
 
     train = ([inds_u_train, inds_i_train], y_train)
     test = ([inds_u_test, inds_i_test], y_test)

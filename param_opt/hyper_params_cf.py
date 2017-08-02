@@ -70,3 +70,6 @@ trials = Trials()
 best = fmin(test, config_space, algo=tpe.suggest, max_evals=300, trials=trials)
 print('Best RMSE:', trials.best_trial['result']['loss'])
 print(trials.best_trial['result']['param'])
+
+# Best RMSE: 0.8852404982260573
+# {'implicit_thresh': 3.0, 'n_factors': 87, 'reg_bias': 5.182106083688767e-07, 'reg_latent': 2.3859821034039756e-05}

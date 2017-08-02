@@ -25,8 +25,8 @@ hybrid_config = HybridConfig(
 
 hybrid_config_new = HybridConfig(
     model_type_cf=models.SigmoidUserAsymFactoring,
-    model_config_cf={'n_factors': 40, 'reg_bias': 0.000005, 'reg_latent': 0.00003,
-                     'implicit_thresh': 3.0, 'implicit_thresh_crosstrain': 4.5, 'optimizer': 'adagrad'},
+    model_config_cf={'implicit_thresh': 3.0, 'implicit_thresh_crosstrain': 4.5, 'n_factors': 87,
+                     'reg_bias': 5.182106083688767e-07, 'reg_latent': 2.3859821034039756e-05},
     model_type_md=models.AttributeBiasAdvanced,
     model_config_md={'reg_bias': 0.0002, 'reg_att_bias': 0.0004, 'optimizer': 'adagrad'},
     batch_size_cf=256,
