@@ -7,7 +7,7 @@ from evaluation import evaluation_metrics
 
 metrics_default = [evaluation_metrics.Rmse(),
                    evaluation_metrics.Mae(),
-                   evaluation_metrics.Precision(5),
+                   # evaluation_metrics.Precision(5),
                    evaluation_metrics.TopNRecall(100),
                    ]
 

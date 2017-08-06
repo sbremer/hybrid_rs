@@ -4,7 +4,7 @@ np.random.seed(0)
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 
 # Local imports
-import script_chdir
+# import script_chdir
 from evaluation.evaluation import Evaluation
 from hybrid_model import dataset
 from util import kfold
@@ -15,6 +15,10 @@ ds = dataset.get_dataset('ml100k')
 
 n_fold = 5
 folds_normal = list(kfold.kfold(n_fold, inds_u))
+
+# Choose metric to optimize against and whether to minimize or maximize
+metric = 'TopNRecall(k=100)'
+metric_factor = -1.0  # 1.0 -> Minimize (For error like RMSE) / -1.0 -> Maximize (for Precision/Recall and such)
 
 evaluater = Evaluation()
 
@@ -46,17 +50,14 @@ def test(config):
         train = ([inds_u_train, inds_i_train], y_train)
         test = ([inds_u_test, inds_i_test], y_test)
 
-        # Build config
-        # config = model_type(**config)
-        # model = model_type(users_features, items_features, config)
         model = model_type(ds.n_users, ds.n_items, config)
 
         model.fit(*train)
 
-        result = evaluater.evaluate(model, *test)
+        result = evaluater.evaluate(model, *train, *test)
         results.add(result)
 
-    return {'loss': results.rmse(), 'status': STATUS_OK, 'param': config}
+    return {'loss': metric_factor * results.mean(metric), 'status': STATUS_OK, 'param': config}
 
 
 # Hybrid config for mercateo
@@ -67,9 +68,12 @@ config_space = {'n_factors': hp.choice('n_factors', np.arange(5, 101)),
 }
 
 trials = Trials()
-best = fmin(test, config_space, algo=tpe.suggest, max_evals=300, trials=trials)
-print('Best RMSE:', trials.best_trial['result']['loss'])
+best = fmin(test, config_space, algo=tpe.suggest, max_evals=200, trials=trials)
+print('Best {}: {}'.format(metric, metric_factor * trials.best_trial['result']['loss']))
 print(trials.best_trial['result']['param'])
 
 # Best RMSE: 0.8852404982260573
 # {'implicit_thresh': 3.0, 'n_factors': 87, 'reg_bias': 5.182106083688767e-07, 'reg_latent': 2.3859821034039756e-05}
+
+# Best TopNRecall(k=100): 0.9039943070913188
+# {'implicit_thresh': 4.0, 'n_factors': 79, 'reg_bias': 0.004770353622067247, 'reg_latent': 2.3618479038250382e-05}

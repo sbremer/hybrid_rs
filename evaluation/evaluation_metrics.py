@@ -131,14 +131,20 @@ class TopNRecall(AdvancedMetric):
         # Number of random ratings to take
         self.k = k
 
-    def _prep_user_data(self, u, x_train_u, x_train_i):
+    def _prep_user_data(self, u, x_train_u, x_train_i, x_test_u, x_test_i):
 
         # Get all item ratings for that user in the training set
-        select_u = x_train_u == u
-        items_train = x_train_i[select_u]
+        select_train_u = x_train_u == u
+        items_train = x_train_i[select_train_u]
 
-        # Get all items not yet rated by user (contained in the training set)
-        items_test = np.setdiff1d(np.arange(self.n_items), items_train, assume_unique=True)
+        # Get all item ratings for that user in the testing set
+        select_test_u = x_test_u == u
+        items_test = x_test_i[select_test_u]
+
+        items = np.concatenate((items_train, items_test))
+
+        # Get all items not yet rated by user (contained in the training and test set)
+        items_test = np.setdiff1d(np.arange(self.n_items), items, assume_unique=True)
         user_test = np.full_like(items_test, u)
 
         # Predict ratings for not-rated items
@@ -172,7 +178,7 @@ class TopNRecall(AdvancedMetric):
 
             # Predict ratings of non-rated items of not done for that user
             if u not in user_lookup:
-                user_lookup[u] = self._prep_user_data(u, x_train_u, x_train_i)
+                user_lookup[u] = self._prep_user_data(u, x_train_u, x_train_i, x_test_u, x_test_i)
 
             # Predictions for not-rated items by user u
             y_user = user_lookup[u]
