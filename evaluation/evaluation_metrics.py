@@ -131,7 +131,8 @@ class TopNRecall(AdvancedMetric):
         # Number of random ratings to take
         self.k = k
 
-    def _prep_user_data(self, u, x_train_u, x_train_i, x_test_u, x_test_i):
+    @staticmethod
+    def _prep_user_data(model, u, x_train_u, x_train_i, x_test_u, x_test_i):
 
         # Get all item ratings for that user in the training set
         select_train_u = x_train_u == u
@@ -144,18 +145,15 @@ class TopNRecall(AdvancedMetric):
         items = np.concatenate((items_train, items_test))
 
         # Get all items not yet rated by user (contained in the training and test set)
-        items_test = np.setdiff1d(np.arange(self.n_items), items, assume_unique=True)
+        items_test = np.setdiff1d(np.arange(model.n_items), items, assume_unique=True)
         user_test = np.full_like(items_test, u)
 
         # Predict ratings for not-rated items
-        y = self.model.predict([user_test, items_test])
+        y = model.predict([user_test, items_test])
 
         return y
 
     def calculate(self, model, x_train, x_test, y_test, y_pred):
-        self.n_users = model.n_users
-        self.n_items = model.n_items
-        self.model = model
 
         # Filter to only use top ratings (== 5.0 for MovieLens
         top_y = y_test == np.max(y_test)
@@ -178,7 +176,7 @@ class TopNRecall(AdvancedMetric):
 
             # Predict ratings of non-rated items of not done for that user
             if u not in user_lookup:
-                user_lookup[u] = self._prep_user_data(u, x_train_u, x_train_i, x_test_u, x_test_i)
+                user_lookup[u] = self._prep_user_data(model, u, x_train_u, x_train_i, x_test_u, x_test_i)
 
             # Predictions for not-rated items by user u
             y_user = user_lookup[u]

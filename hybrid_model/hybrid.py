@@ -211,9 +211,16 @@ class HybridModel:
 
     def _concat_data(self, inds_u_x, inds_i_x, y_x, shuffle=True):
 
-        inds_u_xtrain = np.concatenate((inds_u_x, self.x_train[0]))
-        inds_i_xtrain = np.concatenate((inds_i_x, self.x_train[1]))
-        y_xtrain = np.concatenate((y_x, self.y_train))
+        # Workaround for non-deterministiv ValueError: all the input arrays must have same number of dimensions
+        # Todo: Remove, fix in a proper manner
+        try:
+            inds_u_xtrain = np.concatenate((inds_u_x, self.x_train[0]))
+            inds_i_xtrain = np.concatenate((inds_i_x, self.x_train[1]))
+            y_xtrain = np.concatenate((y_x, self.y_train))
+        except:
+            print('Exception in concat!')
+            print('Dimensions: y_x', y_x.shape, 'self.y_train', self.y_train.shape)
+            return self.x_train[0], self.x_train[1], self.y_train
 
         if shuffle:
             order = np.arange(self.n_train + len(y_x))

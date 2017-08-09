@@ -1,6 +1,7 @@
 import script_chdir
 from evaluation.eval_script import evaluate_models_xval, EvalModel, print_results
 from hybrid_model.dataset import get_dataset
+import time
 
 
 # Get dataset
@@ -15,14 +16,14 @@ models = []
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
 # # AttributeBiasExperimental
-# from hybrid_model.models import AttributeBiasExperimental
-# model_type = AttributeBiasExperimental
+# from hybrid_model.models import AttributeBiasAdvanced
+# model_type = AttributeBiasAdvanced
 # config = {}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 #
 # # AttributeLFF
-# from hybrid_model.models import AttributeLFF
-# model_type = AttributeLFF
+# from hybrid_model.models import AttributeFactorization
+# model_type = AttributeFactorization
 # config = {}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
@@ -65,8 +66,13 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 #                      'implicit_thresh': 3.0, 'optimizer': 'adagrad'}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
+start = time.time()
 results = evaluate_models_xval(dataset, models, coldstart=False, cs_type='user', n_entries=0)
+end = time.time()
 
+elapsed = end - start
+
+print('Elapsed time: {}s'.format(elapsed))
 print_results(results)
 
 # ------- HybridModel
@@ -86,3 +92,6 @@ print_results(results)
 # RMSE: 0.8847 ± 0.0030  MAE: 0.6962 ± 0.0023  Prec@5: 0.7824 ± 0.0009  TopNRecall(k=100): 0.8883 ± 0.0019
 # ------- HybridModel_AttributeBiasAdvanced
 # RMSE: 0.9266 ± 0.0048  MAE: 0.7326 ± 0.0041  Prec@5: 0.7580 ± 0.0028  TopNRecall(k=100): 0.8181 ± 0.0021
+
+# GPU: Elapsed time: 801.0479605197906s
+# CPU: Elapsed time: 1090.9080364704132s
