@@ -8,6 +8,11 @@ import matplotlib.pyplot as plt
 golden_mean = (np.sqrt(5.0) - 1.0) / 2.0
 
 
+width_single = 422.52348
+width_acm_col = 241.14749  # <- One column of ACM Conf. Get this from LaTeX using \the\linewidth
+width = width_single
+
+
 def savefig(filename):
     plt.tight_layout(pad=0.2)
     plt.savefig('plots/{}.pgf'.format(filename))
@@ -15,8 +20,7 @@ def savefig(filename):
 
 
 def figsize(scale, ratio=golden_mean):
-    fig_width_pt = 241.14749  # <- One column of ACM Conf. Get this from LaTeX using \the\linewidth
-    # fig_width_pt = 422.52348 # Normal thesis template
+    fig_width_pt = width
     inches_per_pt = 1.0 / 72.27  # Convert pt to inch
     fig_width = fig_width_pt * inches_per_pt * scale  # width in inches
     fig_height = fig_width * ratio  # height in inches

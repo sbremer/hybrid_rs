@@ -17,7 +17,7 @@ n_fold = 5
 folds_normal = list(kfold.kfold(n_fold, inds_u))
 
 # Choose metric to optimize against and whether to minimize or maximize
-metric = 'TopNRecall(k=100)'
+metric = 'TopNAURC(k=100)'
 metric_factor = -1.0  # 1.0 -> Minimize (For error like RMSE) / -1.0 -> Maximize (for Precision/Recall and such)
 
 evaluater = Evaluation()
@@ -75,5 +75,5 @@ print(trials.best_trial['result']['param'])
 # Best RMSE: 0.8852404982260573
 # {'implicit_thresh': 3.0, 'n_factors': 87, 'reg_bias': 5.182106083688767e-07, 'reg_latent': 2.3859821034039756e-05}
 
-# Best TopNRecall(k=100): 0.9039943070913188
+# Best TopNAURC(k=100): 0.9039943070913188
 # {'implicit_thresh': 4.0, 'n_factors': 79, 'reg_bias': 0.004770353622067247, 'reg_latent': 2.3618479038250382e-05}

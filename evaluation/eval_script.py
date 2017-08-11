@@ -9,7 +9,7 @@ from hybrid_model.hybrid import HybridModel
 from evaluation.evaluation import Evaluation, EvaluationResult, EvaluationResultHybrid
 from hybrid_model.models import AbstractModel, AbstractModelCF, AbstractModelMD
 from hybrid_model.dataset import Dataset
-from util import kfold
+from util import kfold, timing
 
 
 class EvalModel(NamedTuple):
@@ -21,10 +21,14 @@ class EvalModel(NamedTuple):
 def _analyze_hybrid(model: HybridModel, evaluater: Evaluation, train, test)\
         -> Tuple[EvaluationResultHybrid, EvaluationResultHybrid]:
 
-    model.fit_init(*train)
+    with timing.Timer() as t1:
+        model.fit_init(*train)
+
     result_before_x = evaluater.evaluate_hybrid(model, *train, *test)
 
-    model.fit_cross()
+    with timing.Timer() as t2:
+        model.fit_cross()
+
     result_after_x = evaluater.evaluate_hybrid(model, *train, *test)
 
     return result_before_x, result_after_x
@@ -33,19 +37,29 @@ def _analyze_hybrid(model: HybridModel, evaluater: Evaluation, train, test)\
 def _analyze_hybrid_as_model(model: HybridModel, evaluater: Evaluation, train, test)\
         -> Tuple[EvaluationResult, EvaluationResult, EvaluationResult]:
 
-    model.fit_init(*train)
+    with timing.Timer() as t1:
+        model.fit_init(*train)
+
     result_before_x = evaluater.evaluate_hybrid(model, *train, *test)
 
-    model.fit_cross()
+    with timing.Timer() as t2:
+        model.fit_cross()
+
     result_hybrid = evaluater.evaluate(model, *train, *test)
+    result_hybrid.results['runtime'] = t1.interval + t2.interval
 
     return result_hybrid, result_before_x.cf, result_before_x.md
 
 
 def _analyze_model(model, evaluation: Evaluation, train, test)\
         -> EvaluationResult:
-    model.fit(*train)
+
+    with timing.Timer() as t:
+        model.fit(*train)
+
     result = evaluation.evaluate(model, *train, *test)
+    result.results['runtime'] = t.interval
+
     return result
 
 

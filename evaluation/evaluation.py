@@ -7,8 +7,8 @@ from evaluation import evaluation_metrics
 
 metrics_default = [evaluation_metrics.Rmse(),
                    evaluation_metrics.Mae(),
-                   # evaluation_metrics.Precision(5),
-                   evaluation_metrics.TopNRecall(100),
+                   evaluation_metrics.Precision(5),
+                   evaluation_metrics.TopNAURC(100),
                    ]
 
 
@@ -16,7 +16,7 @@ class Evaluation:
     def __init__(self, metrics: List[evaluation_metrics.Metric] = metrics_default):
 
         self.metrics = metrics
-        self.metric_names = [metric.__str__() for metric in metrics]
+        self.metric_names = [metric.__str__() for metric in metrics] + ['runtime']
 
     def evaluate_hybrid(self, model: 'hybrid_model.hybrid.HybridModel', x_train: List[np.ndarray], y_train: np.ndarray,
                         x_test: List[np.ndarray], y_test: np.ndarray) \
@@ -123,9 +123,12 @@ class EvaluationResults:
     def __str__(self):
         s = ''
         for metric_name, result in self.results.items():
-            mean = np.mean(result)
-            std = np.std(result)
-            s += '{}: {:.4f} ± {:.4f}  '.format(metric_name, mean, std)
+            mean = np.mean(result, 0)
+            std = np.std(result, 0)
+            if type(mean) is float and type(std) is float:
+                s += '{}: {:.4f} ± {:.4f}  '.format(metric_name, mean, std)
+            else:
+                s += '{}: {} ± {}  '.format(metric_name, mean, std)
 
         return s
 
@@ -134,7 +137,7 @@ class EvaluationResults:
             self.results[metric_name].append(result.results[metric_name])
 
     def mean(self, metric_name):
-        return np.mean(self.results[metric_name])
+        return np.mean(self.results[metric_name], 0)
 
     def rmse(self):
         return self.mean('rmse')

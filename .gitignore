@@ -98,6 +98,7 @@ ENV/
 
 # Data folder
 data/
+!data/README.md
 
 # Spark folder
 spark-warehouse/

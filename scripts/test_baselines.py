@@ -67,7 +67,7 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
 start = time.time()
-results = evaluate_models_xval(dataset, models, coldstart=False, cs_type='user', n_entries=0)
+results = evaluate_models_xval(dataset, models, coldstart=True, cs_type='user', n_entries=0)
 end = time.time()
 
 elapsed = end - start
@@ -75,23 +75,29 @@ elapsed = end - start
 print('Elapsed time: {}s'.format(elapsed))
 print_results(results)
 
+# Normal:
+# Elapsed time: 691.0316336154938s
 # ------- HybridModel
-# RMSE: 0.8961 ± 0.0032  MAE: 0.7071 ± 0.0035  Prec@5: 0.7813 ± 0.0016  TopNRecall(k=100): 0.8468 ± 0.0030
-# ------- HybridModel_SVDpp
-# RMSE: 0.9001 ± 0.0035  MAE: 0.7116 ± 0.0037  Prec@5: 0.7781 ± 0.0036  TopNRecall(k=100): 0.8695 ± 0.0029
-# ------- HybridModel_AttributeBiasAdvanced
-# RMSE: 0.9269 ± 0.0047  MAE: 0.7336 ± 0.0041  Prec@5: 0.7572 ± 0.0015  TopNRecall(k=100): 0.8177 ± 0.0016
-# ------- BiasEstimator
-# RMSE: 0.9420 ± 0.0050  MAE: 0.7458 ± 0.0041  Prec@5: 0.7485 ± 0.0026  TopNRecall(k=100): 0.8210 ± 0.0029
-# ------- SVD
-# RMSE: 0.9248 ± 0.0040  MAE: 0.7331 ± 0.0030  Prec@5: 0.7652 ± 0.0021  TopNRecall(k=100): 0.8481 ± 0.0023
-
-# ------- HybridModel
-# RMSE: 0.8827 ± 0.0025  MAE: 0.6952 ± 0.0021  Prec@5: 0.7872 ± 0.0022  TopNRecall(k=100): 0.8614 ± 0.0011
+# RMSE: 0.8930 ± 0.0028  MAE: 0.7048 ± 0.0020  Prec@5: 0.7848 ± 0.0021  TopNAURC(k=100): 0.8987 ± 0.0015
 # ------- HybridModel_SigmoidUserAsymFactoring
-# RMSE: 0.8847 ± 0.0030  MAE: 0.6962 ± 0.0023  Prec@5: 0.7824 ± 0.0009  TopNRecall(k=100): 0.8883 ± 0.0019
+# RMSE: 0.8931 ± 0.0033  MAE: 0.7046 ± 0.0031  Prec@5: 0.7820 ± 0.0017  TopNAURC(k=100): 0.9041 ± 0.0010
 # ------- HybridModel_AttributeBiasAdvanced
-# RMSE: 0.9266 ± 0.0048  MAE: 0.7326 ± 0.0041  Prec@5: 0.7580 ± 0.0028  TopNRecall(k=100): 0.8181 ± 0.0021
+# RMSE: 0.9294 ± 0.0042  MAE: 0.7336 ± 0.0038  Prec@5: 0.7573 ± 0.0041  TopNAURC(k=100): 0.8200 ± 0.0022
 
-# GPU: Elapsed time: 801.0479605197906s
-# CPU: Elapsed time: 1090.9080364704132s
+# User
+# Elapsed time: 415.66322684288025s
+# ------- HybridModel
+# RMSE: 1.0290 ± 0.0242  MAE: 0.8329 ± 0.0208  Prec@5: 0.5478 ± 0.0158  TopNAURC(k=100): 0.8198 ± 0.0105
+# ------- HybridModel_SigmoidUserAsymFactoring
+# RMSE: 1.2097 ± 0.0177  MAE: 0.9901 ± 0.0178  Prec@5: 0.4776 ± 0.0307  TopNAURC(k=100): 0.5668 ± 0.0093
+# ------- HybridModel_AttributeBiasAdvanced
+# RMSE: 1.0226 ± 0.0251  MAE: 0.8258 ± 0.0219  Prec@5: 0.5525 ± 0.0223  TopNAURC(k=100): 0.8107 ± 0.0113
+
+# Item
+# Elapsed time: 731.7550356388092s
+# ------- HybridModel
+# RMSE: 1.0603 ± 0.0146  MAE: 0.8675 ± 0.0141  Prec@5: 0.6595 ± 0.0221  TopNAURC(k=100): 0.7241 ± 0.0135
+# ------- HybridModel_SigmoidUserAsymFactoring
+# RMSE: 1.3043 ± 0.0222  MAE: 1.0898 ± 0.0225  Prec@5: 0.6035 ± 0.0240  TopNAURC(k=100): 0.4068 ± 0.0057
+# ------- HybridModel_AttributeBiasAdvanced
+# RMSE: 1.0477 ± 0.0137  MAE: 0.8563 ± 0.0132  Prec@5: 0.6651 ± 0.0216  TopNAURC(k=100): 0.6014 ± 0.0154

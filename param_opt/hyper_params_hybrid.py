@@ -20,7 +20,7 @@ n_fold = 5
 folds_normal = list(kfold.kfold(n_fold, inds_u))
 
 # Choose metric to optimize against and whether to minimize or maximize
-metric = 'TopNRecall(k=100)'
+metric = 'TopNAURC(k=100)'
 metric_factor = -1.0  # 1.0 -> Minimize (For error like RMSE) / -1.0 -> Maximize (for Precision/Recall and such)
 
 at = 0
@@ -105,5 +105,5 @@ best = fmin(test, config_space, algo=tpe.suggest, max_evals=300, trials=trials)
 print('Best {}: {}'.format(metric, metric_factor * trials.best_trial['result']['loss']))
 print(trials.best_trial['result']['param'])
 
-# Best TopNRecall(k=100): 0.8954019730955192
+# Best TopNAURC(k=100): 0.8954019730955192
 # {'batch_size_cf': 512, 'batch_size_md': 1024, 'cutoff_item': 1, 'cutoff_user': 2, 'index_sampler': <class 'hybrid_model.index_sampler.IndexSamplerUserItembased'>, 'index_sampler_config': {'f_cf': 0.2851797465552042, 'f_item': 0.8689756294257732, 'f_user': 2.4239659839472605, 'min_ratings_item': 19, 'min_ratings_user': 25}, 'model_config_cf': {'implicit_thresh': 4.0, 'implicit_thresh_crosstrain': 4.390126327991918, 'n_factors': 79, 'reg_bias': 0.004770353622067247, 'reg_latent': 2.3618479038250382e-05, 'transformation': <class 'hybrid_model.transform.TransformationLinear'>}, 'model_config_md': {'reg_att_bias': 6.578729437598415e-07, 'reg_bias': 6.842025959062749e-07, 'transformation': <class 'hybrid_model.transform.TransformationLinear'>}, 'model_type_cf': <class 'hybrid_model.models.sigmoid_user_asymfactoring.SigmoidUserAsymFactoring'>, 'model_type_md': <class 'hybrid_model.models.attributebias_advanced.AttributeBiasAdvanced'>, 'transformation': <class 'hybrid_model.transform.TransformationLinear'>, 'val_split_init': 0.05, 'val_split_xtrain': 0.05, 'xtrain_data_shuffle': True, 'xtrain_epochs': 3}

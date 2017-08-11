@@ -18,7 +18,7 @@ folds_user = list(kfold.kfold_entries(n_fold, inds_u))
 folds_item = list(kfold.kfold_entries(n_fold, inds_i))
 
 # Choose metric to optimize against and whether to minimize or maximize
-metric = 'TopNRecall(k=100)'
+metric = 'TopNAURC(k=100)'
 metric_factor = -1.0  # 1.0 -> Minimize (For error like RMSE) / -1.0 -> Maximize (for Precision/Recall and such)
 
 evaluater = Evaluation()
@@ -101,6 +101,6 @@ print('User Coldstart: {}  Item Coldstart: {}'
       .format(trials.best_trial['result']['loss_user'], trials.best_trial['result']['loss_item']))
 print(trials.best_trial['result']['param'])
 
-# Best TopNRecall(k=100): 2.2161756794537544
+# Best TopNAURC(k=100): 2.2161756794537544
 # User Coldstart: 0.8104236912893305  Item Coldstart: 0.5953282968750934
 # {'reg_att_bias': 6.578729437598415e-07, 'reg_bias': 6.842025959062749e-07}

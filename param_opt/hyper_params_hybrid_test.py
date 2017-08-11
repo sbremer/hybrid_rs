@@ -20,7 +20,7 @@ n_fold = 5
 folds_normal = list(kfold.kfold(n_fold, inds_u))
 
 # Choose metric to optimize against and whether to minimize or maximize
-metric = 'TopNRecall(k=100)'
+metric = 'TopNAURC(k=100)'
 metric_factor = -1.0  # 1.0 -> Minimize (For error like RMSE) / -1.0 -> Maximize (for Precision/Recall and such)
 
 

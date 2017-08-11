@@ -122,7 +122,7 @@ class AdvancedMetric(Metric):
         raise NotImplementedError
 
 
-class TopNRecall(AdvancedMetric):
+class TopNAURC(AdvancedMetric):
     """
     Method proposed by Cremonesi at RecSys2010
     """
@@ -189,11 +189,82 @@ class TopNRecall(AdvancedMetric):
 
             positions.append(pos)
 
-        # Recall at fixed position
-        # return np.sum(np.array(positions) < 10) / len(positions)
-
         # Area under Recall Curve
         return np.mean([np.sum(np.array(positions) < n) for n in range(1, self.k)]) / len(positions)
 
     def __str__(self):
-        return 'TopNRecall(k={})'.format(self.k)
+        return 'TopNAURC(k={})'.format(self.k)
+
+
+class TopN(AdvancedMetric):
+    """
+    Method proposed by Cremonesi at RecSys2010
+    """
+
+    def __init__(self, k=100):
+        # Number of random ratings to take
+        self.k = k
+
+    @staticmethod
+    def _prep_user_data(model, u, x_train_u, x_train_i, x_test_u, x_test_i):
+
+        # Get all item ratings for that user in the training set
+        select_train_u = x_train_u == u
+        items_train = x_train_i[select_train_u]
+
+        # Get all item ratings for that user in the testing set
+        select_test_u = x_test_u == u
+        items_test = x_test_i[select_test_u]
+
+        items = np.concatenate((items_train, items_test))
+
+        # Get all items not yet rated by user (contained in the training and test set)
+        items_test = np.setdiff1d(np.arange(model.n_items), items, assume_unique=True)
+        user_test = np.full_like(items_test, u)
+
+        # Predict ratings for not-rated items
+        y = model.predict([user_test, items_test])
+
+        return y
+
+    def calculate(self, model, x_train, x_test, y_test, y_pred):
+
+        # Filter to only use top ratings (== 5.0 for MovieLens
+        top_y = y_test == np.max(y_test)
+
+        # Select only top ratings from test set
+        y_pred = y_pred[top_y]
+        x_test_u = x_test[0][top_y].flatten()
+        x_test_i = x_test[1][top_y].flatten()
+
+        x_train_u = x_train[0]
+        x_train_i = x_train[1]
+
+        # Predicting all not rated items for all users in the test set might be slow and memory consuming!
+        user_lookup = {}
+
+        positions = []
+
+        # Iterate over top testset ratings
+        for y, u, i in zip(y_pred, x_test_u, x_test_i):
+
+            # Predict ratings of non-rated items of not done for that user
+            if u not in user_lookup:
+                user_lookup[u] = self._prep_user_data(model, u, x_train_u, x_train_i, x_test_u, x_test_i)
+
+            # Predictions for not-rated items by user u
+            y_user = user_lookup[u]
+
+            # Concat predicted (top) rating with k random (not trained) ratings of that user
+            comparison = np.concatenate(([y], y_user[np.random.choice(len(y_user), self.k)]))
+
+            # Find position of top rating
+            pos = np.where(np.argsort(-comparison) == 0)[0][0]
+
+            positions.append(pos)
+
+        # Recall Curve
+        return np.array([np.sum(np.array(positions) < n) for n in range(1, self.k)]) / len(positions)
+
+    def __str__(self):
+        return 'TopN(k={})'.format(self.k)
