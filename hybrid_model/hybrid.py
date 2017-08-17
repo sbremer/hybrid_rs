@@ -87,7 +87,7 @@ class HybridModel:
         # Cross training
         self.fit_cross()
 
-    def fit_init(self, x_train, y_train):
+    def fit_init(self, x_train, y_train, _train=True):
 
         # Transform y data
         y_train = self.config.transformation.transform(y_train)
@@ -106,23 +106,33 @@ class HybridModel:
                                                        self.config.index_sampler_config, self.x_train)
 
         # Initially train models separately
-        self._train_init()
+        if _train:
+            self._train_init()
 
     def _train_init(self):
+        self._train_init_cf()
+        self._train_init_md()
 
+    def _train_init_cf(self):
         # Initial early stopping callbacks
         callbacks_cf = [EarlyStoppingBestVal('val_loss', patience=5)]
-        callbacks_md = [EarlyStoppingBestVal('val_loss', patience=5)]
 
         # Compute implicit matrix for matrix factorization
         if hasattr(self.model_cf, 'recompute_implicit'):
             self.model_cf.recompute_implicit(self.x_train, self.y_train, transformed=True)
 
-        # Train both models with the training data only
+        # Train model with the training data only
         self.model_cf.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_cf, epochs=200,
                                 validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_cf)
+
+    def _train_init_md(self):
+        # Initial early stopping callbacks
+        callbacks_md = [EarlyStoppingBestVal('val_loss', patience=5)]
+
+        # Train model with the training data only
         self.model_md.model.fit(self.x_train, self.y_train, batch_size=self.config.batch_size_md, epochs=200,
-                                validation_split=self.config.val_split_init, verbose=self.verbose, callbacks=callbacks_md)
+                                validation_split=self.config.val_split_init, verbose=self.verbose,
+                                callbacks=callbacks_md)
 
     def fit_cross(self):
 

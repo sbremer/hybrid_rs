@@ -15,6 +15,14 @@ models = []
 # config = {}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
+# Bias Baseline
+from hybrid_model.models import BiasEstimator
+model_type = BiasEstimator
+config = {'reg_bias': 0.0003, 'include_user': False}
+models.append(EvalModel(model_type.__name__, model_type, config))
+
+# 0.8291 ± 0.0025
+
 # # AttributeBiasExperimental
 # from hybrid_model.models import AttributeBiasAdvanced
 # model_type = AttributeBiasAdvanced
@@ -52,12 +60,12 @@ models = []
 # config = {}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-# HybridModel
-from hybrid_model.hybrid import HybridModel
-from hybrid_model.config import hybrid_config_new
-model_type = HybridModel
-config = hybrid_config_new
-models.append(EvalModel(model_type.__name__, model_type, config))
+# # HybridModel
+# from hybrid_model.hybrid import HybridModel
+# from hybrid_model.config import hybrid_config_new
+# model_type = HybridModel
+# config = hybrid_config_new
+# models.append(EvalModel(model_type.__name__, model_type, config))
 
 # # ExperimentalFactorization
 # from hybrid_model.models.experimental import ExperimentalFactorization
@@ -67,7 +75,7 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
 start = time.time()
-results = evaluate_models_xval(dataset, models, coldstart=True, cs_type='user', n_entries=0)
+results = evaluate_models_xval(dataset, models, coldstart=False, cs_type='user', n_entries=0)
 end = time.time()
 
 elapsed = end - start

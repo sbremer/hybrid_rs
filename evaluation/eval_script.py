@@ -37,16 +37,23 @@ def _analyze_hybrid(model: HybridModel, evaluater: Evaluation, train, test)\
 def _analyze_hybrid_as_model(model: HybridModel, evaluater: Evaluation, train, test)\
         -> Tuple[EvaluationResult, EvaluationResult, EvaluationResult]:
 
-    with timing.Timer() as t1:
-        model.fit_init(*train)
+    model.fit_init(*train, _train=False)
+
+    with timing.Timer() as t_cf:
+        model._train_init_cf()
+
+    with timing.Timer() as t_md:
+        model._train_init_md()
 
     result_before_x = evaluater.evaluate_hybrid(model, *train, *test)
+    result_before_x.cf.results['runtime'] = t_cf.interval
+    result_before_x.md.results['runtime'] = t_md.interval
 
-    with timing.Timer() as t2:
+    with timing.Timer() as t_cross:
         model.fit_cross()
 
     result_hybrid = evaluater.evaluate(model, *train, *test)
-    result_hybrid.results['runtime'] = t1.interval + t2.interval
+    result_hybrid.results['runtime'] = t_cf.interval + t_md.interval + t_cross.interval
 
     return result_hybrid, result_before_x.cf, result_before_x.md
 

@@ -125,10 +125,10 @@ class EvaluationResults:
         for metric_name, result in self.results.items():
             mean = np.mean(result, 0)
             std = np.std(result, 0)
-            if type(mean) is float and type(std) is float:
+            if np.isscalar(mean) and np.isscalar(std):
                 s += '{}: {:.4f} ± {:.4f}  '.format(metric_name, mean, std)
             else:
-                s += '{}: {} ± {}  '.format(metric_name, mean, std)
+                s += '{}: {} ± {}  '.format(metric_name, repr(mean), repr(std))
 
         return s
 

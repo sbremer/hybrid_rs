@@ -13,18 +13,11 @@ dataset = get_dataset('ml100k')
 
 models = []
 
-# Item Average
-from hybrid_model.models import BiasEstimatorCustom
-model_type = BiasEstimatorCustom
-config = {'include_user': False, 'include_item': True}
-models.append(EvalModel(model_type.__name__, model_type, config))
-
 # Bias Baseline
 from hybrid_model.models import BiasEstimator
 model_type = BiasEstimator
 config = {}
 models.append(EvalModel(model_type.__name__, model_type, config))
-
 
 # SVDpp
 from hybrid_model.models import SVDpp

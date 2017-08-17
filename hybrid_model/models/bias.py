@@ -13,7 +13,7 @@ class BiasEstimator(AbstractModelCF):
         super().__init__(n_users, n_items, config)
 
         # Defaults
-        default = {'reg_bias': 0.00005}
+        default = {'reg_bias': 0.00005, 'include_user': True, 'include_item': True}
         default.update(self.config)
         self.config = default
 
@@ -23,10 +23,10 @@ class BiasEstimator(AbstractModelCF):
         input_i = Input((1,))
 
         bias_u = Embedding(n_users, 1, input_length=1, embeddings_initializer='zeros',
-                           embeddings_regularizer=reg_bias)(input_u)
+                           trainable=self.config['include_user'], embeddings_regularizer=reg_bias)(input_u)
         bias_u_r = Flatten()(bias_u)
         bias_i = Embedding(n_items, 1, input_length=1, embeddings_initializer='zeros',
-                           embeddings_regularizer=reg_bias)(input_i)
+                           trainable=self.config['include_item'], embeddings_regularizer=reg_bias)(input_i)
         bias_i_r = Flatten()(bias_i)
 
         added = Concatenate()([bias_u_r, bias_i_r])
