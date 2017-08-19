@@ -14,7 +14,7 @@ ds = dataset.get_dataset('ml100k')
 (inds_u, inds_i, y, users_features, items_features) = ds.data
 
 n_fold = 5
-folds_user = list(kfold.kfold_entries(n_fold, inds_u))
+folds_item = list(kfold.kfold_entries(n_fold, inds_i))
 
 # Choose metric to optimize against and whether to minimize or maximize
 metric = 'TopNAURC(k=100)'
@@ -33,9 +33,9 @@ def test(config):
     at += 1
     print('At:', at)
 
-    results_user = evaluater.get_results_class()
+    results_item = evaluater.get_results_class()
 
-    for xval_train, xval_test in folds_user:
+    for xval_train, xval_test in folds_item:
 
         # Dataset training
         inds_u_train = inds_u[xval_train]
@@ -57,13 +57,14 @@ def test(config):
 
         result = evaluater.evaluate(model, *train, *test)
         result.results['runtime'] = t.interval
-        results_user.add(result)
+        results_item.add(result)
 
-    r = results_user.mean(metric)
+    r = results_item.mean(metric)
 
     return {'loss': metric_factor * r, 'status': STATUS_OK, 'param': config}
 
 
+# Hybrid config for mercateo
 config_space = {'reg_bias': hp.loguniform('reg_bias', -15, -4),
                 'reg_att_bias': hp.loguniform('reg_att_bias', -15, -4),
                 }
@@ -73,5 +74,5 @@ best = fmin(test, config_space, algo=tpe.suggest, max_evals=100, trials=trials)
 print('Best {}: {}'.format(metric, metric_factor * trials.best_trial['result']['loss']))
 print(trials.best_trial['result']['param'])
 
-# Best TopNAURC(k=100): 0.8300431146960398
-# {'reg_att_bias': 0.00014201148821999657, 'reg_bias': 0.0006657144990304895}
+# Best TopNAURC(k=100): 0.586333967320098
+# {'reg_att_bias': 4.156321415552967e-07, 'reg_bias': 0.01791415395580668}
