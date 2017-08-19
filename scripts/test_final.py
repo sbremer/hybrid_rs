@@ -18,8 +18,8 @@ def get_results(dataset_name, coldstart, cs_type='none', n_entries=0):
 
     models_test.append(EvalModel('Hybrid_odefault', model_type, config))
 
-    from hybrid_model.config import hybrid_config_new
-    config = hybrid_config_new
+    from hybrid_model.config import hybrid_config_new2
+    config = hybrid_config_new2
 
     models_test.append(EvalModel('Hybrid_ndefault', model_type, config))
 

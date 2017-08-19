@@ -60,35 +60,9 @@ def test(config):
         result.results['runtime'] = t.interval
         results_user.add(result)
 
-    results_item = evaluater.get_results_class()
+    r = results_user.mean(metric)
 
-    for xval_train, xval_test in folds_item:
-        # Dataset training
-        inds_u_train = inds_u[xval_train]
-        inds_i_train = inds_i[xval_train]
-        y_train = y[xval_train]
-
-        # Dataset testing
-        inds_u_test = inds_u[xval_test]
-        inds_i_test = inds_i[xval_test]
-        y_test = y[xval_test]
-
-        train = ([inds_u_train, inds_i_train], y_train)
-        test = ([inds_u_test, inds_i_test], y_test)
-
-        model = model_type(users_features, items_features, config)
-
-        with timing.Timer() as t:
-            model.fit(*train)
-
-        result = evaluater.evaluate(model, *train, *test)
-        result.results['runtime'] = t.interval
-        results_item.add(result)
-
-    r = 2 * results_user.mean(metric) + results_item.mean(metric)
-
-    return {'loss': metric_factor * r, 'status': STATUS_OK, 'param': config,
-            'loss_user': results_user.mean(metric), 'loss_item': results_item.mean(metric)}
+    return {'loss': metric_factor * r, 'status': STATUS_OK, 'param': config}
 
 
 # Hybrid config for mercateo
@@ -99,16 +73,4 @@ config_space = {'reg_bias': hp.loguniform('reg_bias', -15, -4),
 trials = Trials()
 best = fmin(test, config_space, algo=tpe.suggest, max_evals=100, trials=trials)
 print('Best {}: {}'.format(metric, metric_factor * trials.best_trial['result']['loss']))
-print('User Coldstart: {}  Item Coldstart: {}'
-      .format(trials.best_trial['result']['loss_user'], trials.best_trial['result']['loss_item']))
 print(trials.best_trial['result']['param'])
-
-# AttributeBiasAdvanced
-# Best TopNAURC(k=100): 2.2161756794537544
-# User Coldstart: 0.8104236912893305  Item Coldstart: 0.5953282968750934
-# {'reg_att_bias': 6.578729437598415e-07, 'reg_bias': 6.842025959062749e-07}
-
-# AttributeBiasLight
-# Best TopNAURC(k=100): 2.229733139986006
-# User Coldstart: 0.828243439184351  Item Coldstart: 0.573246261617304
-# {'reg_att_bias': 4.3518131605624814e-05, 'reg_bias': 6.936520853421938e-05}

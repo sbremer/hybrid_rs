@@ -12,23 +12,33 @@ models = []
 # # Bias Baseline
 # from hybrid_model.models import BiasEstimator
 # model_type = BiasEstimator
-# config = {}
+# config = {'reg_bias': 0.0005}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
-# Bias Baseline
-from hybrid_model.models import BiasEstimator
-model_type = BiasEstimator
-config = {'reg_bias': 0.0003, 'include_user': False}
-models.append(EvalModel(model_type.__name__, model_type, config))
+# # Bias Baseline
+# from hybrid_model.models import BiasEstimator
+# model_type = BiasEstimator
+# config = {'reg_bias': 0.0003, 'include_user': False}
+# models.append(EvalModel(model_type.__name__, model_type, config))
 
-# 0.8291 ± 0.0025
+# # AttributeBias
+# from hybrid_model.models import AttributeBias
+# model_type = AttributeBias
+# config={}
+# models.append(EvalModel(model_type.__name__, model_type, config))
 
-# # AttributeBiasExperimental
+# # AttributeBiasAdvanced
 # from hybrid_model.models import AttributeBiasAdvanced
 # model_type = AttributeBiasAdvanced
-# config = {}
+# config = {'reg_att_bias': 6.578729437598415e-07, 'reg_bias': 6.842025959062749e-07}
 # models.append(EvalModel(model_type.__name__, model_type, config))
-#
+
+# AttributeBiasLight
+from hybrid_model.models import AttributeBiasLight
+model_type = AttributeBiasLight
+config = {'reg_bias': 0.00005, 'reg_att_bias': 0.0003}
+models.append(EvalModel(model_type.__name__, model_type, config))
+
 # # AttributeLFF
 # from hybrid_model.models import AttributeFactorization
 # model_type = AttributeFactorization
@@ -74,8 +84,14 @@ models.append(EvalModel(model_type.__name__, model_type, config))
 #                      'implicit_thresh': 3.0, 'optimizer': 'adagrad'}
 # models.append(EvalModel(model_type.__name__, model_type, config))
 
+# # SVD
+# from hybrid_model.models import SVD
+# model_type = SVD
+# config = {}
+# models.append(EvalModel(model_type.__name__, model_type, config))
+
 start = time.time()
-results = evaluate_models_xval(dataset, models, coldstart=False, cs_type='user', n_entries=0)
+results = evaluate_models_xval(dataset, models, coldstart=True, cs_type='user', n_entries=0)
 end = time.time()
 
 elapsed = end - start

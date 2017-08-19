@@ -12,6 +12,7 @@ from .sigmoidsvdpp import SigmoidSVDpp
 # MD Models
 from .attributebias import AttributeBias
 from .attributebias_advanced import AttributeBiasAdvanced
+from .attributebias_light import AttributeBiasLight
 from .attributefactorization import AttributeFactorization
 
 from .sigmoid_user_asymfactoring import SigmoidUserAsymFactoring
