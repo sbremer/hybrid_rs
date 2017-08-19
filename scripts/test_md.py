@@ -8,6 +8,12 @@ dataset = get_dataset('ml100k')
 
 models = []
 
+# Bias Baseline
+from hybrid_model.models import BiasEstimator
+model_type = BiasEstimator
+config = {}
+models.append(EvalModel(model_type.__name__, model_type, config))
+
 # AttributeBiasAdvanced
 from hybrid_model.models import AttributeBiasAdvanced
 model_type = AttributeBiasAdvanced
@@ -38,6 +44,8 @@ results = evaluate_models_xval(dataset, models, coldstart=True, cs_type='item')
 print_results(results)
 
 # User Cold-Start:
+# ------- BiasEstimator
+# RMSE: 1.0212 ± 0.0248  MAE: 0.8224 ± 0.0208  Prec@5: 0.5540 ± 0.0311  TopNAURC(k=100): 0.8165 ± 0.0107  runtime: 9.8669 ± 1.5382
 # ------- AttributeBiasAdvanced
 # RMSE: 1.0209 ± 0.0247  MAE: 0.8224 ± 0.0209  Prec@5: 0.5504 ± 0.0187  TopNAURC(k=100): 0.8097 ± 0.0114  runtime: 9.9565 ± 0.3252
 # ------- AttributeBiasLightdefault
@@ -49,6 +57,8 @@ print_results(results)
 # ------- AttributeBiasLightitem
 # RMSE: 1.0336 ± 0.0233  MAE: 0.8347 ± 0.0197  Prec@5: 0.5379 ± 0.0179  TopNAURC(k=100): 0.8143 ± 0.0098  runtime: 9.0803 ± 0.3275
 # Item Cold-Start:
+# ------- BiasEstimator
+# RMSE: 1.0758 ± 0.0153  MAE: 0.8857 ± 0.0162  Prec@5: 0.6065 ± 0.0303  TopNAURC(k=100): 0.5608 ± 0.0058  runtime: 9.6690 ± 0.6200
 # ------- AttributeBiasAdvanced
 # RMSE: 1.0506 ± 0.0155  MAE: 0.8593 ± 0.0155  Prec@5: 0.6666 ± 0.0305  TopNAURC(k=100): 0.5949 ± 0.0171  runtime: 9.5325 ± 0.1435
 # ------- AttributeBiasLightdefault
